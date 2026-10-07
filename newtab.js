@@ -38,10 +38,31 @@ async function perform(action, details) {
 function updateLayout() {
   const pageTop = folders.getBoundingClientRect().top + window.scrollY;
   const statusHeight = status.hidden ? 0 : status.offsetHeight + 12;
-  const height = window.innerHeight - pageTop - statusHeight - 16;
-  const metrics = gridMetrics(folders.clientWidth, height, folderCount);
+  const bottomPadding = parseFloat(getComputedStyle(document.querySelector("#page")).paddingBottom);
+  const gap = parseFloat(getComputedStyle(folders).rowGap);
+  const height = window.innerHeight - pageTop - statusHeight - bottomPadding;
+  const metrics = gridMetrics(folders.clientWidth, height, folderCount, gap);
   folders.style.setProperty("--columns", metrics.columns);
   folders.style.setProperty("--row-height", `${metrics.rowHeight}px`);
+}
+
+function icon(kind) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "1.5");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  const paths = {
+    pen: "M3 10.5 10.5 3l2.5 2.5L5.5 13 2 14l1-3.5ZM9 4.5 11.5 7",
+    cross: "M4 4l8 8M12 4l-8 8",
+  };
+  path.setAttribute("d", paths[kind]);
+  svg.append(path);
+  return svg;
 }
 
 function iconButton(name, kind) {
@@ -50,18 +71,7 @@ function iconButton(name, kind) {
   button.className = "icon-button";
   button.title = name;
   button.setAttribute("aria-label", name);
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 16 16");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", "1.5");
-  svg.setAttribute("aria-hidden", "true");
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  path.setAttribute("d", kind === "pen"
-    ? "M3 10.5 10.5 3l2.5 2.5L5.5 13 2 14l1-3.5ZM9 4.5 11.5 7"
-    : "M4 4l8 8M12 4l-8 8");
-  svg.append(path);
-  button.append(svg);
+  button.append(icon(kind));
   return button;
 }
 
@@ -74,7 +84,7 @@ function startRename(node, group, name, actions) {
   editing = input;
   name.hidden = true;
   actions.hidden = true;
-  group.prepend(input);
+  group.insertBefore(input, name);
   input.focus();
   input.select();
   let finished = false;
