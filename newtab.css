@@ -316,6 +316,17 @@ body:not(.bookmark-menu-open) .bookmark:hover > a.item-name,
   font-size: 12px;
 }
 
+.rearrangement-overlay {
+  position: fixed;
+  z-index: 5;
+  margin: 0;
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 @media (max-width: 600px) {
   #page {
     padding: 16px;

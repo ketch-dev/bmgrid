@@ -48,6 +48,7 @@
 - `bookmarks.js`: native bookmark operations, event cache, undo, and persistent deletion logging.
 - `newtab.html`, `newtab.css`, `newtab.js`: grid rendering and interactions.
 - `layout.js`: column and row sizing calculations.
+- `rearrangement.js`: captures item positions, animates grid rearrangements and cross-folder moves, and cleans up interrupted animations. Rearrangement animations intentionally remain enabled regardless of `prefers-reduced-motion`, per user preference.
 - `options.html`, `options.css`, `options.js`: Preferences UI and log download.
 - `tests/`: Node tests and the fake bookmarks API.
 

@@ -1,12 +1,14 @@
 import { OTHER_BOOKMARKS_ID, nodeType } from "./bookmarks.js";
 import { createIconProvider } from "./bookmark-icons.js";
 import { gridMetrics } from "./layout.js";
+import { createRearrangement } from "./rearrangement.js";
 
 const unfoldered = document.querySelector("#unfoldered");
 const direct = document.querySelector("#direct-bookmarks");
 const folders = document.querySelector("#folders");
 const status = document.querySelector("#status");
 const bookmarkMenu = document.querySelector("#bookmark-menu");
+const rearrangement = createRearrangement(document.querySelector("#page"));
 const DRAG_TYPE = "application/x-bmgrid-bookmark";
 const DEFAULT_FAVICON = browser.runtime.getURL("bookmark.svg");
 let nodes = new Map();
@@ -195,6 +197,7 @@ function makeDraggable(element, node) {
     }
     event.stopPropagation();
     closeBookmarkMenu();
+    rearrangement.finish();
     dragging = node.id;
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData(DRAG_TYPE, node.id);
@@ -271,6 +274,7 @@ function renderFolder(node, nested = false) {
 
 function render(tree) {
   closeBookmarkMenu();
+  const previousPositions = rearrangement.capture();
   const scrollPositions = new Map([...folders.querySelectorAll(".folder-card")]
     .map(card => [card.dataset.folderId, card.querySelector(".folder-content").scrollTop]));
   nodes = new Map();
@@ -288,10 +292,13 @@ function render(tree) {
       folderCount++;
       const card = renderFolder(node);
       folders.append(card);
-      card.querySelector(".folder-content").scrollTop = scrollPositions.get(node.id) ?? 0;
     }
   }
   updateLayout();
+  for (const card of folders.children) {
+    card.querySelector(".folder-content").scrollTop = scrollPositions.get(card.dataset.folderId) ?? 0;
+  }
+  rearrangement.play(previousPositions);
 }
 
 async function refresh() {
