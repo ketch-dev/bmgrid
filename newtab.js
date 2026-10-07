@@ -63,6 +63,8 @@ function icon(kind) {
   const paths = {
     pen: "M3 10.5 10.5 3l2.5 2.5L5.5 13 2 14l1-3.5ZM9 4.5 11.5 7",
     cross: "M4 4l8 8M12 4l-8 8",
+    cancel: "M14 8a6 6 0 1 1-12 0 6 6 0 0 1 12 0ZM4 4l8 8",
+    check: "M3 8l3 3 7-7",
   };
   path.setAttribute("d", paths[kind]);
   svg.append(path);
@@ -83,12 +85,18 @@ function startRename(node, container, name, actions) {
   if (editing) return;
   const input = document.createElement("input");
   input.className = "rename-input";
+  input.style.width = `${name.getBoundingClientRect().width}px`;
   input.value = node.title;
   input.setAttribute("aria-label", `Rename ${node.title || node.url || "folder"}`);
+  const cancel = iconButton("Cancel rename", "cancel");
+  const accept = iconButton("Accept rename", "check");
+  const controls = [cancel, accept];
   editing = input;
   name.hidden = true;
   for (const button of actions) button.hidden = true;
+  container.classList.add("is-renaming");
   container.insertBefore(input, name);
+  container.append(...controls);
   input.focus();
   input.select();
   let finished = false;
@@ -98,6 +106,7 @@ function startRename(node, container, name, actions) {
     finished = true;
     const title = input.value;
     input.disabled = true;
+    for (const button of controls) button.disabled = true;
     if (save && title !== node.title) {
       try {
         await request("rename", { id: node.id, title });
@@ -107,19 +116,35 @@ function startRename(node, container, name, actions) {
     }
     editing = null;
     input.remove();
+    for (const button of controls) button.remove();
+    container.classList.remove("is-renaming");
     name.hidden = false;
     for (const button of actions) button.hidden = false;
     scheduleRefresh();
   }
 
-  input.addEventListener("keydown", event => {
-    if (event.key === "Enter" || event.key === "Escape") {
+  function onKeydown(event) {
+    if (event.key === "Escape" || (event.key === "Enter" && event.target === input)) {
       event.preventDefault();
       event.stopPropagation();
       finish(event.key === "Enter");
     }
-  });
-  input.addEventListener("blur", () => { finish(true); });
+  }
+  function onBlur(event) {
+    if (event.relatedTarget !== input && !controls.includes(event.relatedTarget)) finish(true);
+  }
+  for (const element of [input, ...controls]) {
+    element.addEventListener("keydown", onKeydown);
+    element.addEventListener("blur", onBlur);
+  }
+  for (const button of controls) {
+    // Keep pointer clicks from saving on input blur before Cancel can run.
+    button.addEventListener("mousedown", event => {
+      if (event.button === 0) event.preventDefault();
+    });
+  }
+  cancel.addEventListener("click", () => { finish(false); });
+  accept.addEventListener("click", () => { finish(true); });
 }
 
 function appendTitle(node, container, isLink) {
