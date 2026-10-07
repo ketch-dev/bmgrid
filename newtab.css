@@ -56,7 +56,6 @@ button {
 }
 
 #direct-bookmarks > .bookmark {
-  --action-inset: 10px;
   min-width: 128px;
   max-width: 400px;
   padding: 5px 10px;
@@ -131,7 +130,6 @@ button {
 }
 
 .bookmark {
-  --action-inset: 8px;
   position: relative;
   isolation: isolate;
   min-width: 0;
@@ -220,28 +218,6 @@ a.item-name {
   margin-right: 0;
 }
 
-/* Mask the whole action area, including 8px before the first button. */
-.bookmark:not(.is-renaming):is(:hover, :focus-within) > a.item-name::after {
-  background-image: linear-gradient(
-    to left,
-    var(--surface-hover) calc(var(--action-inset) + 58px),
-    transparent 0
-  );
-}
-
-.bookmark:not(.is-renaming) > .icon-button {
-  position: absolute;
-  top: 50%;
-  right: var(--action-inset);
-  transform: translateY(-50%);
-}
-
-.bookmark:not(.is-renaming) > .item-name + .icon-button {
-  right: calc(var(--action-inset) + 26px);
-}
-
-.bookmark:hover > .icon-button,
-.bookmark:focus-within > .icon-button,
 .item-title-group:hover > .icon-button,
 .item-title-group:focus-within > .icon-button,
 .is-renaming > .icon-button {
@@ -270,9 +246,39 @@ a.item-name {
   color: #999999;
   background: #383838;
 }
-.icon-button svg {
+.icon-button svg,
+.menu-button svg {
   width: 14px;
   height: 14px;
+}
+
+.bookmark-menu {
+  position: fixed;
+  z-index: 10;
+  min-width: 140px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+}
+
+.menu-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-button:hover,
+.menu-button:focus-visible {
+  background: var(--surface-hover);
 }
 
 .rename-input {

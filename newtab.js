@@ -6,6 +6,7 @@ const unfoldered = document.querySelector("#unfoldered");
 const direct = document.querySelector("#direct-bookmarks");
 const folders = document.querySelector("#folders");
 const status = document.querySelector("#status");
+const bookmarkMenu = document.querySelector("#bookmark-menu");
 const DRAG_TYPE = "application/x-bmgrid-bookmark";
 const DEFAULT_FAVICON = browser.runtime.getURL("bookmark.svg");
 let nodes = new Map();
@@ -15,6 +16,7 @@ let dragging = null;
 let pendingRefresh = false;
 let refreshTimer;
 let refreshVersion = 0;
+let menuTarget = null;
 const icons = createIconProvider(browser, updateBookmarkIcons);
 icons.ready.catch(error => { console.error("Bookmark Grid icons:", error); });
 
@@ -81,7 +83,55 @@ function iconButton(name, kind) {
   return button;
 }
 
-function startRename(node, container, name, actions) {
+function closeBookmarkMenu(restoreFocus = false) {
+  const target = menuTarget;
+  menuTarget = null;
+  bookmarkMenu.hidden = true;
+  if (restoreFocus && target?.isConnected) target.querySelector("a").focus();
+}
+
+function openBookmarkMenu(event) {
+  const row = event.target.closest(".bookmark");
+  if (!row || editing || dragging) return;
+  event.preventDefault();
+  menuTarget = row;
+  bookmarkMenu.hidden = false;
+  const box = row.querySelector("a").getBoundingClientRect();
+  const keyboard = event.type === "keydown" || (event.clientX === 0 && event.clientY === 0);
+  const x = keyboard ? box.left : event.clientX;
+  const y = keyboard ? box.bottom : event.clientY;
+  bookmarkMenu.style.left = `${Math.max(8, Math.min(x, window.innerWidth - bookmarkMenu.offsetWidth - 8))}px`;
+  bookmarkMenu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - bookmarkMenu.offsetHeight - 8))}px`;
+  bookmarkMenu.firstElementChild.focus();
+}
+
+for (const button of bookmarkMenu.children) {
+  button.prepend(icon(button.dataset.action === "rename" ? "pen" : "cross"));
+}
+bookmarkMenu.addEventListener("click", event => {
+  const action = event.target.closest("button")?.dataset.action;
+  if (!action || !menuTarget) return;
+  const row = menuTarget;
+  const node = nodes.get(row.dataset.bookmarkId);
+  closeBookmarkMenu(action === "delete");
+  if (action === "rename") startRename(node, row, row.querySelector("a"));
+  else perform("delete", { id: node.id });
+});
+bookmarkMenu.addEventListener("focusout", event => {
+  if (!bookmarkMenu.contains(event.relatedTarget)) closeBookmarkMenu();
+});
+document.addEventListener("pointerdown", event => {
+  if (!bookmarkMenu.contains(event.target)) closeBookmarkMenu();
+});
+document.addEventListener("contextmenu", event => {
+  closeBookmarkMenu();
+  openBookmarkMenu(event);
+});
+document.addEventListener("scroll", () => { closeBookmarkMenu(); }, true);
+window.addEventListener("resize", () => { closeBookmarkMenu(); });
+window.addEventListener("blur", () => { closeBookmarkMenu(); });
+
+function startRename(node, container, name, actions = []) {
   if (editing) return;
   const unfolderedWidth = container.parentElement === direct
     ? container.getBoundingClientRect().width : null;
@@ -160,6 +210,8 @@ function appendTitle(node, container, isLink) {
   if (isLink) {
     // Native links give current-tab left clicks and new-tab middle clicks.
     name.href = node.url;
+    container.append(name);
+    return;
   }
   const rename = iconButton(`Rename ${node.title || node.url || "folder"}`, "pen");
   const remove = iconButton(`Delete ${node.title || node.url || "folder"}`, "cross");
@@ -180,6 +232,7 @@ function makeDraggable(element, node) {
       return;
     }
     event.stopPropagation();
+    closeBookmarkMenu();
     dragging = node.id;
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData(DRAG_TYPE, node.id);
@@ -255,6 +308,7 @@ function renderFolder(node, nested = false) {
 }
 
 function render(tree) {
+  closeBookmarkMenu();
   const scrollPositions = new Map([...folders.querySelectorAll(".folder-card")]
     .map(card => [card.dataset.folderId, card.querySelector(".folder-content").scrollTop]));
   nodes = new Map();
@@ -384,6 +438,16 @@ document.addEventListener("drop", event => {
 });
 
 document.addEventListener("keydown", event => {
+  if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+    openBookmarkMenu(event);
+    return;
+  }
+  if (event.key === "Escape" && menuTarget) {
+    event.preventDefault();
+    event.stopPropagation();
+    closeBookmarkMenu(true);
+    return;
+  }
   if (event.ctrlKey && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "z"
       && !event.target.closest("input, textarea, [contenteditable]")) {
     event.preventDefault();

@@ -21,8 +21,9 @@
 - Preserve minimum dimensions on small windows rather than shrinking cards below these limits.
 
 ## Interactions
-- Show the pen and X beside hovered or focused names; single-click the pen to rename.
-- Delete only on double-clicking X, immediately and without confirmation; deleting a folder removes its descendants.
+- Right-click a bookmark to show a small popup with the pen icon and Rename text, and the X icon and Delete text; each action uses a single click. Support the context-menu key and Shift+F10 as well.
+- Show the pen and X beside hovered or focused folder names; single-click the pen to rename and double-click X to delete a folder and its descendants.
+- Delete immediately and without confirmation. Dismiss the bookmark popup after an action, outside click, Escape, scrolling, resizing, or refresh.
 - Left-click a bookmark to open it in the current tab; middle-click opens a new tab.
 - Inline rename saves on Enter or blur and cancels on Escape.
 - Ctrl+Z restores extension-made deletions during the browser session; keep normal text undo while editing.
