@@ -83,6 +83,8 @@ function iconButton(name, kind) {
 
 function startRename(node, container, name, actions) {
   if (editing) return;
+  const unfolderedWidth = container.parentElement === direct
+    ? container.getBoundingClientRect().width : null;
   const input = document.createElement("input");
   input.className = "rename-input";
   input.style.width = `${name.getBoundingClientRect().width}px`;
@@ -92,6 +94,8 @@ function startRename(node, container, name, actions) {
   const accept = iconButton("Accept rename", "check");
   const controls = [cancel, accept];
   editing = input;
+  // The editor's in-flow buttons must not widen a content-sized bookmark.
+  if (unfolderedWidth !== null) container.style.width = `${unfolderedWidth}px`;
   name.hidden = true;
   for (const button of actions) button.hidden = true;
   container.classList.add("is-renaming");
@@ -118,6 +122,7 @@ function startRename(node, container, name, actions) {
     input.remove();
     for (const button of controls) button.remove();
     container.classList.remove("is-renaming");
+    if (unfolderedWidth !== null) container.style.removeProperty("width");
     name.hidden = false;
     for (const button of actions) button.hidden = false;
     scheduleRefresh();

@@ -57,6 +57,7 @@ button {
 
 #direct-bookmarks > .bookmark {
   --action-inset: 10px;
+  min-width: 128px;
   max-width: 400px;
   padding: 5px 10px;
   border: 1px solid var(--border);
@@ -220,7 +221,11 @@ a.item-name {
 
 /* Mask the whole action area, including 8px before the first button. */
 .bookmark:not(.is-renaming):is(:hover, :focus-within) > a.item-name::after {
-  background-image: linear-gradient(to left, var(--surface-hover) calc(var(--action-inset) + 58px), transparent 0);
+  background-image: linear-gradient(
+    to left,
+    var(--surface-hover) calc(var(--action-inset) + 58px),
+    transparent 0
+  );
 }
 
 .bookmark:not(.is-renaming) > .icon-button {
