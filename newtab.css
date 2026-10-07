@@ -104,7 +104,7 @@ button {
 .folder-content {
   flex: 1;
   min-height: 0;
-  padding: 12px;
+  padding: 8px;
   overflow-y: auto;
   overscroll-behavior: auto;
   scrollbar-width: thin;
@@ -112,7 +112,7 @@ button {
 }
 
 .nested-folder {
-  margin: 12px 0;
+  margin: 8px 0;
 }
 
 .nested-folder:first-child {
