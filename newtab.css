@@ -286,6 +286,12 @@ a.item-name {
 [data-drop="after"]::after {
   box-shadow: inset 0 -1px var(--drop-indicator);
 }
+#direct-bookmarks > .bookmark[data-drop="before"]::after {
+  box-shadow: inset 1px 0 var(--drop-indicator);
+}
+#direct-bookmarks > .bookmark[data-drop="after"]::after {
+  box-shadow: inset -1px 0 var(--drop-indicator);
+}
 .folder-card[data-drop="before"]::after {
   box-shadow: inset 2px 0 var(--drop-indicator);
 }
