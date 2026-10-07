@@ -65,22 +65,10 @@ function icon(kind) {
   const paths = {
     pen: "M3 10.5 10.5 3l2.5 2.5L5.5 13 2 14l1-3.5ZM9 4.5 11.5 7",
     cross: "M4 4l8 8M12 4l-8 8",
-    cancel: "M14 8a6 6 0 1 1-12 0 6 6 0 0 1 12 0ZM4 4l8 8",
-    check: "M3 8l3 3 7-7",
   };
   path.setAttribute("d", paths[kind]);
   svg.append(path);
   return svg;
-}
-
-function iconButton(name, kind) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "icon-button";
-  button.title = name;
-  button.setAttribute("aria-label", name);
-  button.append(icon(kind));
-  return button;
 }
 
 function closeBookmarkMenu(restoreFocus = false) {
@@ -140,16 +128,11 @@ function startRename(node, container, name) {
   input.style.width = `${name.getBoundingClientRect().width}px`;
   input.value = node.title;
   input.setAttribute("aria-label", `Rename ${node.title || node.url || "folder"}`);
-  const cancel = iconButton("Cancel rename", "cancel");
-  const accept = iconButton("Accept rename", "check");
-  const controls = [cancel, accept];
   editing = input;
-  // The editor's in-flow buttons must not widen a content-sized bookmark.
+  // Keep content-sized bookmarks at their original width while editing.
   if (unfolderedWidth !== null) container.style.width = `${unfolderedWidth}px`;
   name.hidden = true;
-  container.classList.add("is-renaming");
   container.insertBefore(input, name);
-  container.append(...controls);
   input.focus();
   input.select();
   let finished = false;
@@ -159,7 +142,6 @@ function startRename(node, container, name) {
     finished = true;
     const title = input.value;
     input.disabled = true;
-    for (const button of controls) button.disabled = true;
     if (save && title !== node.title) {
       try {
         await request("rename", { id: node.id, title });
@@ -169,35 +151,19 @@ function startRename(node, container, name) {
     }
     editing = null;
     input.remove();
-    for (const button of controls) button.remove();
-    container.classList.remove("is-renaming");
     if (unfolderedWidth !== null) container.style.removeProperty("width");
     name.hidden = false;
     scheduleRefresh();
   }
 
-  function onKeydown(event) {
-    if (event.key === "Escape" || (event.key === "Enter" && event.target === input)) {
+  input.addEventListener("keydown", event => {
+    if (event.key === "Escape" || event.key === "Enter") {
       event.preventDefault();
       event.stopPropagation();
       finish(event.key === "Enter");
     }
-  }
-  function onBlur(event) {
-    if (event.relatedTarget !== input && !controls.includes(event.relatedTarget)) finish(true);
-  }
-  for (const element of [input, ...controls]) {
-    element.addEventListener("keydown", onKeydown);
-    element.addEventListener("blur", onBlur);
-  }
-  for (const button of controls) {
-    // Keep pointer clicks from saving on input blur before Cancel can run.
-    button.addEventListener("mousedown", event => {
-      if (event.button === 0) event.preventDefault();
-    });
-  }
-  cancel.addEventListener("click", () => { finish(false); });
-  accept.addEventListener("click", () => { finish(true); });
+  });
+  input.addEventListener("blur", () => { finish(true); });
 }
 
 function appendTitle(node, container, isLink) {

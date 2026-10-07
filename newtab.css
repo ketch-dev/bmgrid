@@ -56,7 +56,7 @@ button {
 }
 
 #direct-bookmarks > .bookmark {
-  min-width: 128px;
+  min-width: 64px;
   max-width: 400px;
   padding: 5px 10px;
   border: 1px solid var(--border);
@@ -209,42 +209,11 @@ a.item-name {
   background-clip: padding-box;
 }
 
-.bookmark > .icon-button {
-  position: relative;
-  z-index: 2;
-}
-
-.bookmark:not(.is-renaming) > .item-name {
+.bookmark > .item-name,
+.bookmark > .rename-input {
   margin-right: 0;
 }
 
-.is-renaming > .icon-button {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.icon-button {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  padding: 3px;
-  border: 0;
-  border-radius: 5px;
-  color: #444444;
-  background: transparent;
-  cursor: pointer;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 150ms ease;
-}
-
-.icon-button:hover {
-  color: #999999;
-  background: #383838;
-}
-.icon-button svg,
 .menu-button svg {
   width: 14px;
   height: 14px;
@@ -354,8 +323,7 @@ a.item-name {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bookmark,
-  .icon-button {
+  .bookmark {
     transition: none;
   }
 }
