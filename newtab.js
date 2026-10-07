@@ -293,6 +293,9 @@ function dropIntent(event, sourceId) {
   if (event.target.closest("#unfoldered")) {
     return { element: unfoldered, destination: { parentId: OTHER_BOOKMARKS_ID }, indicator: "inside" };
   }
+  if (event.target.closest("#folders")) {
+    return { element: folders, destination: { parentId: OTHER_BOOKMARKS_ID }, indicator: "inside" };
+  }
   return null;
 }
 
