@@ -56,6 +56,7 @@ button {
 }
 
 #direct-bookmarks > .bookmark {
+  --action-inset: 10px;
   max-width: 400px;
   padding: 5px 10px;
   border: 1px solid var(--border);
@@ -128,6 +129,7 @@ button {
 }
 
 .bookmark {
+  --action-inset: 8px;
   position: relative;
   isolation: isolate;
   min-width: 0;
@@ -202,12 +204,34 @@ a.item-name {
 
 #direct-bookmarks > .bookmark > a.item-name::after {
   inset: -1px;
+  border: 1px solid transparent;
   border-radius: 9px;
+  background-clip: padding-box;
 }
 
 .bookmark > .icon-button {
   position: relative;
   z-index: 2;
+}
+
+.bookmark:not(.is-renaming) > .item-name {
+  margin-right: 0;
+}
+
+/* Mask the whole action area, including 8px before the first button. */
+.bookmark:not(.is-renaming):is(:hover, :focus-within) > a.item-name::after {
+  background-image: linear-gradient(to left, var(--surface-hover) calc(var(--action-inset) + 58px), transparent 0);
+}
+
+.bookmark:not(.is-renaming) > .icon-button {
+  position: absolute;
+  top: 50%;
+  right: var(--action-inset);
+  transform: translateY(-50%);
+}
+
+.bookmark:not(.is-renaming) > .item-name + .icon-button {
+  right: calc(var(--action-inset) + 26px);
 }
 
 .bookmark:hover > .icon-button,
