@@ -215,7 +215,7 @@ a.item-name {
   padding: 3px;
   border: 0;
   border-radius: 5px;
-  color: var(--muted);
+  color: #444444;
   background: transparent;
   cursor: pointer;
   opacity: 0;
@@ -224,7 +224,7 @@ a.item-name {
 }
 
 .icon-button:hover {
-  color: var(--text);
+  color: #999999;
   background: #383838;
 }
 .icon-button svg {
