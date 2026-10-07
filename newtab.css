@@ -67,7 +67,7 @@ button {
 #folders {
   display: grid;
   grid-template-columns: repeat(var(--columns, 1), minmax(400px, 1fr));
-  grid-auto-rows: var(--row-height, 500px);
+  grid-auto-rows: var(--row-height, 400px);
   gap: 16px;
   border-radius: 16px;
 }
@@ -84,7 +84,9 @@ button {
 
 .folder-card {
   min-width: 400px;
-  min-height: 500px;
+  min-height: 400px;
+  /* Keep off-screen rows' shadows from bleeding above their top edges. */
+  box-shadow: 0 12px 16px -12px rgb(0 0 0 / 14%);
 }
 
 .folder-heading {

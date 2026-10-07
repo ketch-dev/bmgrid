@@ -16,7 +16,7 @@
 
 ## Layout
 - Fit up to six columns, each at least 400px wide, accounting for padding and gaps.
-- Fit up to two rows in the available height, each at least 500px tall; account for the unfoldered area.
+- Fit up to two rows in the available height, each at least 400px tall; account for the unfoldered area.
 - Additional folder rows use vertical page scrolling. Long folder contents scroll inside their cards.
 - Preserve minimum dimensions on small windows rather than shrinking cards below these limits.
 
