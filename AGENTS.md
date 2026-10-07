@@ -11,7 +11,9 @@
 - Display immediate child folders as grid cards in native order, left to right and then top to bottom.
 - List folder contents vertically in native order. Render deeper folders as always-expanded, indented sections.
 - The unfoldered-first presentation is a display rule; do not reorder native bookmarks just to render it.
-- Support moving bookmarks within and between displayed folders and the unfoldered area, and reordering sibling folders.
+- Support moving bookmarks and folders within and between displayed folders and the unfoldered area, including reordering sibling folders. Prevent moving folders into themselves or their descendants.
+- Dropping a folder anywhere on another folder's heading or contents nests it. Reordering uses the actual gaps between sibling cards or sections, with an insertion line in the gap. Wrapped grid row gaps insert before the first card in the next row; nested gaps preserve native mixed bookmark/folder ordering.
+- The `#folders` container accepts folder drops only in measured insertion gaps, never as a generic root destination. Its background and unused grid space accept bookmark drops. The unfoldered area accepts both bookmarks and folders.
 - Observe bookmark events so changes made in Firefox's native UI appear in the grid.
 
 ## Layout
@@ -48,6 +50,7 @@
 - `bookmarks.js`: native bookmark operations, event cache, undo, and persistent deletion logging.
 - `newtab.html`, `newtab.css`, `newtab.js`: grid rendering and interactions.
 - `layout.js`: column and row sizing calculations.
+- `drag-drop.js`: bookmark and folder drop targeting, measured insertion-gap and indicator geometry, and cycle prevention.
 - `rearrangement.js`: captures item positions, animates grid rearrangements and cross-folder moves, and cleans up interrupted animations. Rearrangement animations intentionally remain enabled regardless of `prefers-reduced-motion`, per user preference.
 - `options.html`, `options.css`, `options.js`: Preferences UI and log download.
 - `tests/`: Node tests and the fake bookmarks API.

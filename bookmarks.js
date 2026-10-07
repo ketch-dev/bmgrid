@@ -5,6 +5,16 @@ export function nodeType(node) {
   return node.type ?? (node.url === undefined ? "folder" : "bookmark");
 }
 
+export function canMoveToFolder(nodes, sourceId, parentId) {
+  let parent = nodes.get(parentId);
+  if (!parent || nodeType(parent) !== "folder") return false;
+  while (parent) {
+    if (parent.id === sourceId) return false;
+    parent = nodes.get(parent.parentId);
+  }
+  return true;
+}
+
 function copyNode(node) {
   const copy = {
     id: node.id,
@@ -201,8 +211,8 @@ export function createBookmarkController(api) {
     if (!parent || nodeType(parent) !== "folder") {
       throw new Error("The destination folder no longer exists.");
     }
-    if (nodeType(node) === "folder" && node.parentId !== parent.id) {
-      throw new Error("Folders can only be reordered among their siblings.");
+    if (!canMoveToFolder(nodes, node.id, parent.id)) {
+      throw new Error("A folder cannot be moved into itself or one of its descendants.");
     }
     const siblings = (await api.bookmarks.getChildren(parent.id))
       .filter(child => child.id !== id);

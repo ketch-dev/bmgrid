@@ -1,5 +1,6 @@
-import { OTHER_BOOKMARKS_ID, nodeType } from "./bookmarks.js";
+import { nodeType } from "./bookmarks.js";
 import { createIconProvider } from "./bookmark-icons.js";
+import { dropIntent, dropLineBox } from "./drag-drop.js";
 import { gridMetrics } from "./layout.js";
 import { createRearrangement } from "./rearrangement.js";
 
@@ -331,91 +332,24 @@ function scheduleRefresh() {
 }
 
 function clearDropIndicator() {
+  if (activeDrop) delete activeDrop.element.dataset.drop;
   activeDrop = null;
   dropLine.hidden = true;
-  for (const element of document.querySelectorAll("[data-drop]")) {
-    delete element.dataset.drop;
-  }
 }
 
 function updateDropIndicator() {
-  if (!activeDrop || activeDrop.indicator === "inside") return;
-  const { element, indicator } = activeDrop;
-  const before = indicator === "before";
-  const horizontal = element.parentElement === direct || element.classList.contains("folder-card");
-  const [start, end] = horizontal ? ["left", "right"] : ["top", "bottom"];
-  const box = element.getBoundingClientRect();
-  const neighbor = (before ? element.previousElementSibling : element.nextElementSibling)
-    ?.getBoundingClientRect();
-  let gap = horizontal ? (element.parentElement === direct ? 8 : 16) : 0;
-  if (neighbor && (!horizontal || neighbor.top === box.top)) {
-    gap = before ? box[start] - neighbor[end] : neighbor[start] - box[end];
-  }
-  const center = box[before ? start : end] + (before ? -gap : gap) / 2;
-  // Only the outer card's content scrolls; nested folders overflow visibly.
-  const viewport = horizontal ? box : element.closest(".folder-card")
-    .querySelector(".folder-content").getBoundingClientRect();
-  const top = Math.max(horizontal ? box.top : center - 1, viewport.top);
-  const bottom = Math.min(horizontal ? box.bottom : center + 1, viewport.bottom);
-  dropLine.hidden = bottom <= top;
+  const box = dropLineBox(activeDrop);
+  dropLine.hidden = !box;
+  if (!box) return;
   Object.assign(dropLine.style, {
-    left: `${horizontal ? center - 1 : box.left}px`, top: `${top}px`,
-    width: `${horizontal ? 2 : box.width}px`, height: `${Math.max(0, bottom - top)}px`,
+    left: `${box.left}px`, top: `${box.top}px`,
+    width: `${box.width}px`, height: `${box.height}px`,
   });
-}
-
-function dropIntent(event, sourceId) {
-  const source = nodes.get(sourceId);
-  if (!source) return null;
-  if (nodeType(source) === "folder") {
-    const target = event.target.closest("[data-folder-id]");
-    const targetNode = nodes.get(target?.dataset.folderId);
-    if (!targetNode || targetNode.id === sourceId || targetNode.parentId !== source.parentId) {
-      return null;
-    }
-    const box = target.classList.contains("folder-card")
-      ? target.getBoundingClientRect()
-      : target.querySelector(".folder-heading").getBoundingClientRect();
-    const before = target.classList.contains("folder-card")
-      ? event.clientX < box.left + box.width / 2
-      : event.clientY < box.top + box.height / 2;
-    return {
-      element: target,
-      destination: { parentId: source.parentId, anchorId: targetNode.id, position: before ? "before" : "after" },
-      indicator: before ? "before" : "after",
-    };
-  }
-
-  const row = event.target.closest("[data-bookmark-id]");
-  if (row) {
-    const targetNode = nodes.get(row.dataset.bookmarkId);
-    if (!targetNode || targetNode.id === sourceId) return null;
-    const box = row.getBoundingClientRect();
-    const before = targetNode.parentId === OTHER_BOOKMARKS_ID
-      ? event.clientX < box.left + box.width / 2
-      : event.clientY < box.top + box.height / 2;
-    return {
-      element: row,
-      destination: { parentId: targetNode.parentId, anchorId: targetNode.id, position: before ? "before" : "after" },
-      indicator: before ? "before" : "after",
-    };
-  }
-  const folder = event.target.closest("[data-folder-id]");
-  if (folder) {
-    return { element: folder, destination: { parentId: folder.dataset.folderId }, indicator: "inside" };
-  }
-  if (event.target.closest("#unfoldered")) {
-    return { element: unfoldered, destination: { parentId: OTHER_BOOKMARKS_ID }, indicator: "inside" };
-  }
-  if (event.target.closest("#folders")) {
-    return { element: folders, destination: { parentId: OTHER_BOOKMARKS_ID }, indicator: "inside" };
-  }
-  return null;
 }
 
 document.addEventListener("dragover", event => {
   if (!event.dataTransfer.types.includes(DRAG_TYPE)) return;
-  const intent = dropIntent(event, dragging);
+  const intent = dropIntent(event, dragging, nodes);
   clearDropIndicator();
   if (intent) {
     event.preventDefault();
@@ -432,7 +366,7 @@ document.addEventListener("dragleave", event => {
 
 document.addEventListener("drop", event => {
   const sourceId = event.dataTransfer.getData(DRAG_TYPE);
-  const intent = dropIntent(event, sourceId);
+  const intent = dropIntent(event, sourceId, nodes);
   if (!intent) return;
   event.preventDefault();
   clearDropIndicator();

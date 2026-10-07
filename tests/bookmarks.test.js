@@ -42,7 +42,44 @@ test("bookmarks move in both directions between root, folders, and nested folder
   assert.deepEqual(api.find("physics").children.map(node => node.id), ["physics-a", "math-a"]);
   await call("move", { id: "direct-a", destination: { parentId: "unfiled_____" } });
   assert.equal(api.find("direct-a").parentId, "unfiled_____");
-  await assert.rejects(call("move", { id: "math", destination: { parentId: "physics" } }));
+});
+
+test("folders nest with their existing descendants and can move back to the root", async () => {
+  const { api, controller, call } = await setup();
+  await call("move", { id: "math", destination: { parentId: "physics" } });
+  assert.deepEqual(api.find("physics").children.map(node => node.id), ["physics-a", "math"]);
+  assert.equal(api.find("math").parentId, "physics");
+  assert.equal(api.find("algebra-a").parentId, "algebra");
+  await controller.idle();
+  assert.equal(api.storage.session.data.bookmarkCache.find(node => node.id === "math").parentId, "physics");
+  await call("move", { id: "math", destination: { parentId: "unfiled_____", anchorId: "physics", position: "before" } });
+  assert.deepEqual(api.find("unfiled_____").children.map(node => node.id), ["direct-a", "math", "physics", "direct-b"]);
+  assert.deepEqual(api.find("math").children.map(node => node.id), ["math-a", "algebra", "separator", "math-b"]);
+});
+
+test("nested folders move between parents, reorder siblings, and move to the unfoldered area", async () => {
+  const { api, call } = await setup();
+  await call("move", { id: "algebra", destination: { parentId: "physics", anchorId: "physics-a", position: "before" } });
+  assert.deepEqual(api.find("physics").children.map(node => node.id), ["algebra", "physics-a"]);
+  await call("move", { id: "math", destination: { parentId: "physics", anchorId: "algebra", position: "after" } });
+  assert.deepEqual(api.find("physics").children.map(node => node.id), ["algebra", "math", "physics-a"]);
+  await call("move", { id: "math", destination: { parentId: "physics", anchorId: "algebra", position: "before" } });
+  assert.deepEqual(api.find("physics").children.map(node => node.id), ["math", "algebra", "physics-a"]);
+  await call("move", { id: "algebra", destination: { parentId: "unfiled_____" } });
+  assert.equal(api.find("unfiled_____").children.at(-1).id, "algebra");
+  assert.equal(api.find("algebra-a").parentId, "algebra");
+});
+
+test("folders cannot move into themselves or descendants, and invalid moves leave the tree intact", async () => {
+  const { api, call } = await setup();
+  const deep = await api.bookmarks.create({ parentId: "algebra", type: "folder", title: "Deeper" });
+  const before = await call("tree");
+  for (const parentId of ["math", "algebra", deep.id]) {
+    await assert.rejects(call("move", { id: "math", destination: { parentId } }), /itself or one of its descendants/);
+  }
+  await assert.rejects(call("move", { id: "math", destination: { parentId: "toolbar_____" } }), /no longer exists/);
+  await assert.rejects(call("move", { id: "math", destination: { parentId: "physics-a" } }), /no longer exists/);
+  assert.deepEqual(await call("tree"), before);
 });
 
 test("same-folder forward and backward moves land at the requested position", async () => {
