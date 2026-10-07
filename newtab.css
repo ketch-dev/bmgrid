@@ -86,6 +86,7 @@ button {
 .folder-card {
   min-width: 400px;
   min-height: 400px;
+  overflow: hidden;
   /* Keep off-screen rows' shadows from bleeding above their top edges. */
   box-shadow: 0 12px 16px -12px rgb(0 0 0 / 14%);
 }
@@ -321,6 +322,9 @@ a.item-name {
 }
 #direct-bookmarks > .bookmark[data-drop="after"]::after {
   box-shadow: inset -1px 0 var(--drop-indicator);
+}
+.folder-card[data-drop]::after {
+  inset: 0;
 }
 .folder-card[data-drop="before"]::after {
   box-shadow: inset 2px 0 var(--drop-indicator);
