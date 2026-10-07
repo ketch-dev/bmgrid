@@ -75,7 +75,7 @@ function iconButton(name, kind) {
   return button;
 }
 
-function startRename(node, group, name, actions) {
+function startRename(node, container, name, actions) {
   if (editing) return;
   const input = document.createElement("input");
   input.className = "rename-input";
@@ -83,8 +83,8 @@ function startRename(node, group, name, actions) {
   input.setAttribute("aria-label", `Rename ${node.title || node.url || "folder"}`);
   editing = input;
   name.hidden = true;
-  actions.hidden = true;
-  group.insertBefore(input, name);
+  for (const button of actions) button.hidden = true;
+  container.insertBefore(input, name);
   input.focus();
   input.select();
   let finished = false;
@@ -104,7 +104,7 @@ function startRename(node, group, name, actions) {
     editing = null;
     input.remove();
     name.hidden = false;
-    actions.hidden = false;
+    for (const button of actions) button.hidden = false;
     scheduleRefresh();
   }
 
@@ -118,9 +118,7 @@ function startRename(node, group, name, actions) {
   input.addEventListener("blur", () => { finish(true); });
 }
 
-function titleGroup(node, isLink) {
-  const group = document.createElement("div");
-  group.className = "item-title-group";
+function appendTitle(node, container, isLink) {
   const name = document.createElement(isLink ? "a" : "span");
   name.className = "item-name";
   name.textContent = node.title || node.url || "Untitled folder";
@@ -130,19 +128,15 @@ function titleGroup(node, isLink) {
     // without requesting access to browsing history or tab information.
     name.href = node.url;
   }
-  const actions = document.createElement("span");
-  actions.className = "item-actions";
   const rename = iconButton(`Rename ${node.title || node.url || "folder"}`, "pen");
-  rename.addEventListener("click", () => { startRename(node, group, name, actions); });
   const remove = iconButton(`Delete ${node.title || node.url || "folder"}`, "cross");
+  rename.addEventListener("click", () => { startRename(node, container, name, [rename, remove]); });
   remove.addEventListener("dblclick", event => {
     event.preventDefault();
     event.stopPropagation();
     perform("delete", { id: node.id });
   });
-  actions.append(rename, remove);
-  group.append(name, actions);
-  return group;
+  container.append(name, rename, remove);
 }
 
 function makeDraggable(element, node) {
@@ -170,7 +164,7 @@ function renderBookmark(node) {
   const row = document.createElement("div");
   row.className = "bookmark";
   row.dataset.bookmarkId = node.id;
-  row.append(titleGroup(node, true));
+  appendTitle(node, row, true);
   makeDraggable(row, node);
   return row;
 }
@@ -182,7 +176,10 @@ function renderFolder(node, nested = false) {
   const heading = document.createElement(nested ? "h3" : "h2");
   heading.className = "folder-heading";
   heading.id = `heading-${node.id}`;
-  heading.append(titleGroup(node, false));
+  const group = document.createElement("div");
+  group.className = "item-title-group";
+  appendTitle(node, group, false);
+  heading.append(group);
   makeDraggable(heading, node);
   section.setAttribute("aria-labelledby", heading.id);
   const content = document.createElement("div");
