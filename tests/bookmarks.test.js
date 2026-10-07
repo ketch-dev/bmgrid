@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createBookmarkController, deletionMessage } from "../bookmarks.js";
-import { createFakeBrowser, fixture } from "./fake-browser.js";
+import { createFakeBrowser } from "./fake-browser.js";
 
 async function setup() {
   const api = createFakeBrowser();
@@ -58,7 +58,7 @@ test("single deletion is logged once with its exact URL and undo restores native
   await call("delete", { id: "math-a" });
   await controller.idle();
   assert.equal(api.find("math-a"), null);
-  assert.equal(await call("log"), "Deleted https://math.test/?x=%2F&y=+value#fragment\n");
+  assert.equal(await call("log"), "Deleted: First (https://math.test/?x=%2F&y=+value#fragment)\n\n");
   await call("undo");
   await controller.idle();
   const restored = api.find("math").children[0];
@@ -70,10 +70,11 @@ test("single deletion is logged once with its exact URL and undo restores native
 
 test("folder deletion logs one full recursive event, retaining duplicate URLs and skipping separators", async () => {
   const { api, controller, call } = await setup();
-  const expected = deletionMessage(fixture().children[1].children[0]);
+  const expected = "Deleted Math folder with bookmarks:\nFirst (https://math.test/?x=%2F&y=+value#fragment)\nNested (https://algebra.test/)\nSecond (https://math.test/?x=%2F&y=+value#fragment)";
   await call("delete", { id: "math" });
   await controller.idle();
   assert.deepEqual(api.storage.local.data.deletionLog, [expected]);
+  assert.equal(await call("log"), `${expected}\n\n`);
   await call("undo");
   await controller.idle();
   const restored = api.find("unfiled_____").children[0];
@@ -105,32 +106,35 @@ test("native folder deletions outside Other Bookmarks include all descendant URL
   await controller.idle();
   await api.bookmarks.removeTree(folder.id);
   await controller.idle();
-  assert.equal(await call("log"), "Deleted Native folder folder that had bookmarks:\nhttps://native.test/?a=%20#b\n");
+  assert.equal(await call("log"), "Deleted Native folder folder with bookmarks:\nNative (https://native.test/?a=%20#b)\n\n");
   assert.deepEqual(api.storage.session.data.deletions ?? [], []);
 });
 
 test("the log retains the most recent 100 events in oldest-to-newest order", async () => {
   const { api, controller, call } = await setup();
   for (let index = 0; index < 105; index++) {
-    const bookmark = await api.bookmarks.create({ parentId: "menu________", type: "bookmark", title: "", url: `https://log.test/${index}` });
+    const bookmark = await api.bookmarks.create({ parentId: "menu________", type: "bookmark", title: `Bookmark ${index}`, url: `https://log.test/${index}` });
     await api.bookmarks.remove(bookmark.id);
   }
   await controller.idle();
   assert.equal(api.storage.local.data.deletionLog.length, 100);
-  assert.equal(api.storage.local.data.deletionLog[0], "Deleted https://log.test/5");
-  assert.equal(api.storage.local.data.deletionLog.at(-1), "Deleted https://log.test/104");
-  assert.equal((await call("log")).split("\n\n").length, 100);
+  assert.equal(api.storage.local.data.deletionLog[0], "Deleted: Bookmark 5 (https://log.test/5)");
+  assert.equal(api.storage.local.data.deletionLog.at(-1), "Deleted: Bookmark 104 (https://log.test/104)");
+  assert.equal(await call("log"), Array.from({ length: 100 }, (_, position) => {
+    const index = position + 5;
+    return `Deleted: Bookmark ${index} (https://log.test/${index})\n\n`;
+  }).join(""));
 });
 
 test("native URL edits, folder renames, and moves update the pre-deletion cache", async () => {
   const { api, controller, call } = await setup();
   await api.bookmarks.update("physics", { title: '物理 "Physics"' });
-  await api.bookmarks.update("algebra-a", { url: "https://edited.test/?a=%2F#exact" });
+  await api.bookmarks.update("algebra-a", { title: "Edited bookmark", url: "https://edited.test/?a=%2F#exact" });
   await api.bookmarks.move("algebra-a", { parentId: "physics", index: 0 });
   await api.bookmarks.move("physics-a", { parentId: "physics", index: 0 });
   await api.bookmarks.removeTree("physics");
   await controller.idle();
-  assert.equal(await call("log"), 'Deleted 物理 "Physics" folder that had bookmarks:\nhttps://physics.test/\nhttps://edited.test/?a=%2F#exact\n');
+  assert.equal(await call("log"), 'Deleted 物理 "Physics" folder with bookmarks:\nPhysics link (https://physics.test/)\nEdited bookmark (https://edited.test/?a=%2F#exact)\n\n');
 });
 
 test("undo and native folder logging survive a background-page unload", async () => {
@@ -160,7 +164,7 @@ test("browser restart clears undo while retaining the deletion log", async () =>
   const restarted = createBookmarkController(api);
   await restarted.handle({ action: "undo" });
   assert.equal(api.find("direct-a"), null);
-  assert.equal(await restarted.handle({ action: "log" }), "Deleted https://direct-a.test/\n");
+  assert.equal(await restarted.handle({ action: "log" }), "Deleted: Direct A (https://direct-a.test/)\n\n");
 });
 
 test("failed deletions leave bookmarks intact and do not retain false undo entries", async () => {
@@ -190,4 +194,30 @@ test("failed recursive restoration rolls back partial bookmarks and remains retr
   api.bookmarks.create = create;
   await call("undo");
   assert.ok(api.find("unfiled_____").children.some(node => node.title === "Math"));
+});
+
+test("export preserves legacy entries and appends named events with a blank line after every event", async () => {
+  const api = createFakeBrowser();
+  const legacy = [
+    "Deleted https://legacy.test/?exact=%2F#url",
+    "Deleted Old folder folder that had bookmarks:\nhttps://legacy.test/nested",
+  ];
+  await api.storage.local.set({ deletionLog: legacy });
+  const controller = createBookmarkController(api);
+  await controller.handle({ action: "delete", id: "direct-a" });
+  await controller.idle();
+  const latest = "Deleted: Direct A (https://direct-a.test/)";
+  assert.deepEqual(api.storage.local.data.deletionLog, [...legacy, latest]);
+  assert.equal(await controller.handle({ action: "log" }), `${legacy[0]}\n\n${legacy[1]}\n\n${latest}\n\n`);
+});
+
+test("multiline names stay on a single bookmark line without changing the URL", async () => {
+  const { api, controller, call } = await setup();
+  const url = "https://example.test/path_(item)?query=%2F&value=+#anchor";
+  await api.bookmarks.update("math", { title: "Math\nnotes" });
+  await api.bookmarks.update("math-a", { title: 'Linear\r\nAlgebra "notes"', url });
+  await call("delete", { id: "math-a" });
+  await controller.idle();
+  assert.equal(await call("log"), `Deleted: Linear Algebra "notes" (${url})\n\n`);
+  assert.equal(deletionMessage({ type: "folder", title: "Math\nnotes", children: [] }), "Deleted Math notes folder with bookmarks:");
 });

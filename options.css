@@ -1,0 +1,23 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+  color: #333;
+}
+
+body { margin: 0; }
+main { padding: 12px; }
+
+#download-log {
+  padding: 6px 12px;
+  border: 1px solid #d0d0d0;
+  border-radius: 3px;
+  color: inherit;
+  background: #fafafa;
+  font: inherit;
+  cursor: pointer;
+}
+
+#download-log:hover { background: #e1e1e1; }
+:focus-visible { outline: 2px solid #777; outline-offset: 2px; }
+#status { margin: 12px 0 0; color: #444; font-size: 12px; }

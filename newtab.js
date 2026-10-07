@@ -4,7 +4,6 @@ import { gridMetrics } from "./layout.js";
 const unfoldered = document.querySelector("#unfoldered");
 const direct = document.querySelector("#direct-bookmarks");
 const folders = document.querySelector("#folders");
-const footer = document.querySelector("#footer");
 const status = document.querySelector("#status");
 const DRAG_TYPE = "application/x-bmgrid-bookmark";
 let nodes = new Map();
@@ -38,7 +37,8 @@ async function perform(action, details) {
 
 function updateLayout() {
   const pageTop = folders.getBoundingClientRect().top + window.scrollY;
-  const height = window.innerHeight - pageTop - footer.offsetHeight - 12 - 16;
+  const statusHeight = status.hidden ? 0 : status.offsetHeight + 12;
+  const height = window.innerHeight - pageTop - statusHeight - 16;
   const metrics = gridMetrics(folders.clientWidth, height, folderCount);
   folders.style.setProperty("--columns", metrics.columns);
   folders.style.setProperty("--row-height", `${metrics.rowHeight}px`);
@@ -319,22 +319,6 @@ document.addEventListener("keydown", event => {
   }
 });
 
-document.querySelector("#download-log").addEventListener("click", async () => {
-  try {
-    const text = await request("log");
-    const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "deletion-log.txt";
-    document.body.append(link);
-    link.click();
-    link.remove();
-    setTimeout(() => { URL.revokeObjectURL(url); }, 60000);
-  } catch (error) {
-    showError(error);
-  }
-});
-
 for (const event of [browser.bookmarks.onCreated, browser.bookmarks.onChanged,
   browser.bookmarks.onMoved, browser.bookmarks.onRemoved]) {
   event.addListener(scheduleRefresh);
@@ -343,5 +327,5 @@ for (const event of [browser.bookmarks.onCreated, browser.bookmarks.onChanged,
 window.addEventListener("resize", updateLayout);
 const observer = new ResizeObserver(updateLayout);
 observer.observe(unfoldered);
-observer.observe(footer);
+observer.observe(status);
 refresh();

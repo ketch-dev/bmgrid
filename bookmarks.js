@@ -24,12 +24,14 @@ function walk(node, visit) {
 }
 
 export function deletionMessage(node) {
-  if (nodeType(node) === "bookmark") return `Deleted ${node.url}`;
-  const urls = [];
+  const name = item => (item.title ?? "").replace(/[\r\n\u2028\u2029]+/g, " ");
+  const bookmarkLine = item => `${name(item)} (${item.url})`;
+  if (nodeType(node) === "bookmark") return `Deleted: ${bookmarkLine(node)}`;
+  const bookmarks = [];
   walk(node, child => {
-    if (nodeType(child) === "bookmark") urls.push(child.url);
+    if (nodeType(child) === "bookmark") bookmarks.push(bookmarkLine(child));
   });
-  return `Deleted ${node.title} folder that had bookmarks:${urls.length ? `\n${urls.join("\n")}` : ""}`;
+  return `Deleted ${name(node)} folder with bookmarks:${bookmarks.length ? `\n${bookmarks.join("\n")}` : ""}`;
 }
 
 export function createBookmarkController(api) {
@@ -278,7 +280,7 @@ export function createBookmarkController(api) {
         case "move": return move(message.id, message.destination);
         case "delete": return remove(message.id);
         case "undo": return undo();
-        case "log": return log.join("\n\n") + (log.length ? "\n" : "");
+        case "log": return log.join("\n\n") + (log.length ? "\n\n" : "");
         default: throw new Error("Unknown bookmark operation.");
       }
     });
