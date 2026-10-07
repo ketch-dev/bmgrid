@@ -87,16 +87,16 @@ function closeBookmarkMenu(restoreFocus = false) {
   const target = menuTarget;
   menuTarget = null;
   bookmarkMenu.hidden = true;
-  if (restoreFocus && target?.isConnected) target.querySelector("a").focus();
+  if (restoreFocus && target?.isConnected) target.querySelector(".item-name").focus();
 }
 
 function openBookmarkMenu(event) {
-  const row = event.target.closest(".bookmark");
+  const row = event.target.closest(".bookmark, .folder-heading");
   if (!row || editing || dragging) return;
   event.preventDefault();
-  menuTarget = row;
+  menuTarget = row.querySelector(".item-title-group") ?? row;
   bookmarkMenu.hidden = false;
-  const box = row.querySelector("a").getBoundingClientRect();
+  const box = menuTarget.querySelector(".item-name").getBoundingClientRect();
   const keyboard = event.type === "keydown" || (event.clientX === 0 && event.clientY === 0);
   const x = keyboard ? box.left : event.clientX;
   const y = keyboard ? box.bottom : event.clientY;
@@ -112,9 +112,9 @@ bookmarkMenu.addEventListener("click", event => {
   const action = event.target.closest("button")?.dataset.action;
   if (!action || !menuTarget) return;
   const row = menuTarget;
-  const node = nodes.get(row.dataset.bookmarkId);
+  const node = nodes.get(row.dataset.itemId);
   closeBookmarkMenu(action === "delete");
-  if (action === "rename") startRename(node, row, row.querySelector("a"));
+  if (action === "rename") startRename(node, row, row.querySelector(".item-name"));
   else perform("delete", { id: node.id });
 });
 bookmarkMenu.addEventListener("focusout", event => {
@@ -131,7 +131,7 @@ document.addEventListener("scroll", () => { closeBookmarkMenu(); }, true);
 window.addEventListener("resize", () => { closeBookmarkMenu(); });
 window.addEventListener("blur", () => { closeBookmarkMenu(); });
 
-function startRename(node, container, name, actions = []) {
+function startRename(node, container, name) {
   if (editing) return;
   const unfolderedWidth = container.parentElement === direct
     ? container.getBoundingClientRect().width : null;
@@ -147,7 +147,6 @@ function startRename(node, container, name, actions = []) {
   // The editor's in-flow buttons must not widen a content-sized bookmark.
   if (unfolderedWidth !== null) container.style.width = `${unfolderedWidth}px`;
   name.hidden = true;
-  for (const button of actions) button.hidden = true;
   container.classList.add("is-renaming");
   container.insertBefore(input, name);
   container.append(...controls);
@@ -174,7 +173,6 @@ function startRename(node, container, name, actions = []) {
     container.classList.remove("is-renaming");
     if (unfolderedWidth !== null) container.style.removeProperty("width");
     name.hidden = false;
-    for (const button of actions) button.hidden = false;
     scheduleRefresh();
   }
 
@@ -203,6 +201,7 @@ function startRename(node, container, name, actions = []) {
 }
 
 function appendTitle(node, container, isLink) {
+  container.dataset.itemId = node.id;
   const name = document.createElement(isLink ? "a" : "span");
   name.className = "item-name";
   name.textContent = node.title || node.url || "Untitled folder";
@@ -210,18 +209,10 @@ function appendTitle(node, container, isLink) {
   if (isLink) {
     // Native links give current-tab left clicks and new-tab middle clicks.
     name.href = node.url;
-    container.append(name);
-    return;
+  } else {
+    name.tabIndex = 0;
   }
-  const rename = iconButton(`Rename ${node.title || node.url || "folder"}`, "pen");
-  const remove = iconButton(`Delete ${node.title || node.url || "folder"}`, "cross");
-  rename.addEventListener("click", () => { startRename(node, container, name, [rename, remove]); });
-  remove.addEventListener("dblclick", event => {
-    event.preventDefault();
-    event.stopPropagation();
-    perform("delete", { id: node.id });
-  });
-  container.append(name, rename, remove);
+  container.append(name);
 }
 
 function makeDraggable(element, node) {

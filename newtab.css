@@ -218,8 +218,6 @@ a.item-name {
   margin-right: 0;
 }
 
-.item-title-group:hover > .icon-button,
-.item-title-group:focus-within > .icon-button,
 .is-renaming > .icon-button {
   opacity: 1;
   pointer-events: auto;
