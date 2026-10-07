@@ -75,12 +75,6 @@ button {
   border-radius: 16px;
   background: var(--surface);
   box-shadow: 0 8px 24px rgb(0 0 0 / 14%);
-  transition: border-color 150ms ease;
-}
-
-.folder-card:hover,
-.nested-folder:hover {
-  border-color: #484848;
 }
 
 .folder-card {
@@ -265,9 +259,9 @@ a.item-name:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .folder-card,
-  .nested-folder,
   .bookmark,
   .item-actions {
     transition: none;
+  }
+}
 
