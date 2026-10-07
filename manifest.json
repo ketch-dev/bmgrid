@@ -3,7 +3,7 @@
   "name": "Bookmark Grid",
   "version": "1.0.0",
   "description": "A minimal new-tab grid for Firefox's Other Bookmarks.",
-  "permissions": ["bookmarks", "storage"],
+  "permissions": ["bookmarks", "storage", "tabs"],
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },

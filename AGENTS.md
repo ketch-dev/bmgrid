@@ -43,6 +43,8 @@
 ## Code map
 - `manifest.json`: permissions, new-tab override, background module, and embedded Preferences registration.
 - `background.js`: message routing and background startup.
+- `bookmark-icons.js`: replaceable icon provider; encapsulates tab-derived collection, persistent caching, and update notifications. Its public interface is `startIconBackground(api)` and `createIconProvider(api, onChanged)` returning `ready` and `getUrl(bookmark)`.
+- `bookmark.svg`: generic bookmark favicon fallback.
 - `bookmarks.js`: native bookmark operations, event cache, undo, and persistent deletion logging.
 - `newtab.html`, `newtab.css`, `newtab.js`: grid rendering and interactions.
 - `layout.js`: column and row sizing calculations.

@@ -1,4 +1,5 @@
 import { OTHER_BOOKMARKS_ID, nodeType } from "./bookmarks.js";
+import { createIconProvider } from "./bookmark-icons.js";
 import { gridMetrics } from "./layout.js";
 
 const unfoldered = document.querySelector("#unfoldered");
@@ -6,6 +7,7 @@ const direct = document.querySelector("#direct-bookmarks");
 const folders = document.querySelector("#folders");
 const status = document.querySelector("#status");
 const DRAG_TYPE = "application/x-bmgrid-bookmark";
+const DEFAULT_FAVICON = browser.runtime.getURL("bookmark.svg");
 let nodes = new Map();
 let folderCount = 0;
 let editing = null;
@@ -13,6 +15,8 @@ let dragging = null;
 let pendingRefresh = false;
 let refreshTimer;
 let refreshVersion = 0;
+const icons = createIconProvider(browser, updateBookmarkIcons);
+icons.ready.catch(error => { console.error("Bookmark Grid icons:", error); });
 
 async function request(action, details = {}) {
   const response = await browser.runtime.sendMessage({ scope: "bmgrid", action, ...details });
@@ -124,8 +128,7 @@ function appendTitle(node, container, isLink) {
   name.textContent = node.title || node.url || "Untitled folder";
   name.title = isLink ? `${node.title}\n${node.url}` : node.title;
   if (isLink) {
-    // Native links give current-tab left clicks and new-tab middle clicks,
-    // without requesting access to browsing history or tab information.
+    // Native links give current-tab left clicks and new-tab middle clicks.
     name.href = node.url;
   }
   const rename = iconButton(`Rename ${node.title || node.url || "folder"}`, "pen");
@@ -164,9 +167,38 @@ function renderBookmark(node) {
   const row = document.createElement("div");
   row.className = "bookmark";
   row.dataset.bookmarkId = node.id;
+  const image = document.createElement("img");
+  image.className = "bookmark-icon";
+  image.alt = "";
+  image.width = image.height = 16;
+  image.draggable = false;
+  image.decoding = "async";
+  image.loading = "lazy";
+  image.referrerPolicy = "no-referrer";
+  image.addEventListener("error", () => {
+    if (image.getAttribute("src") !== DEFAULT_FAVICON) image.src = DEFAULT_FAVICON;
+  });
+  updateBookmarkIcon(image, node);
+  row.append(image);
   appendTitle(node, row, true);
   makeDraggable(row, node);
   return row;
+}
+
+function updateBookmarkIcon(image, bookmark) {
+  const source = icons.getUrl(bookmark) ?? DEFAULT_FAVICON;
+  // Remember the requested source even after an error, to avoid retrying a
+  // broken icon whenever an unrelated cache entry changes.
+  if (image.dataset.source === source) return;
+  image.dataset.source = source;
+  image.src = source;
+}
+
+function updateBookmarkIcons() {
+  for (const image of document.querySelectorAll(".bookmark-icon")) {
+    const bookmark = nodes.get(image.closest(".bookmark").dataset.bookmarkId);
+    updateBookmarkIcon(image, bookmark);
+  }
 }
 
 function renderFolder(node, nested = false) {

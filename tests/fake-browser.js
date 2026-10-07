@@ -10,7 +10,7 @@ function event() {
   };
 }
 
-function storage() {
+function storage(onChanged, area) {
   const data = {};
   return {
     data,
@@ -21,7 +21,14 @@ function storage() {
       }
       return result;
     },
-    async set(values) { Object.assign(data, clone(values)); },
+    async set(values) {
+      const changes = {};
+      for (const [key, value] of Object.entries(values)) {
+        changes[key] = { oldValue: clone(data[key]), newValue: clone(value) };
+      }
+      Object.assign(data, clone(values));
+      onChanged.emit(changes, area);
+    },
   };
 }
 
@@ -53,10 +60,19 @@ export function fixture() {
 
 export function createFakeBrowser(tree = fixture()) {
   let nextId = 1;
+  const onStorageChanged = event();
   const api = {
-    storage: { local: storage(), session: storage() },
+    storage: {
+      local: storage(onStorageChanged, "local"),
+      session: storage(onStorageChanged, "session"),
+      onChanged: onStorageChanged,
+    },
     bookmarks: {
       onCreated: event(), onChanged: event(), onMoved: event(), onRemoved: event(),
+    },
+    tabs: {
+      items: [], onCreated: event(), onUpdated: event(),
+      async query() { return clone(api.tabs.items); },
     },
     runtime: { onMessage: event() },
     calls: [],
@@ -146,6 +162,8 @@ export function createFakeBrowser(tree = fixture()) {
   api.find = find;
   api.resetListeners = () => {
     for (const value of Object.values(api.bookmarks)) value.clear?.();
+    for (const value of Object.values(api.tabs)) value.clear?.();
+    api.storage.onChanged.clear();
   };
   return api;
 }

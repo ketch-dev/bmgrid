@@ -1,6 +1,8 @@
 import { createBookmarkController } from "./bookmarks.js";
+import { startIconBackground } from "./bookmark-icons.js";
 
 const controller = createBookmarkController(browser);
+startIconBackground(browser);
 
 browser.runtime.onMessage.addListener(message => {
   if (message?.scope !== "bmgrid") return undefined;
