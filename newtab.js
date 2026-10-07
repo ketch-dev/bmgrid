@@ -8,6 +8,7 @@ const direct = document.querySelector("#direct-bookmarks");
 const folders = document.querySelector("#folders");
 const status = document.querySelector("#status");
 const bookmarkMenu = document.querySelector("#bookmark-menu");
+const dropLine = document.querySelector("#drop-line");
 const rearrangement = createRearrangement(document.querySelector("#page"));
 const DRAG_TYPE = "application/x-bmgrid-bookmark";
 const DEFAULT_FAVICON = browser.runtime.getURL("bookmark.svg");
@@ -19,6 +20,7 @@ let pendingRefresh = false;
 let refreshTimer;
 let refreshVersion = 0;
 let menuTarget = null;
+let activeDrop = null;
 const icons = createIconProvider(browser, updateBookmarkIcons);
 icons.ready.catch(error => { console.error("Bookmark Grid icons:", error); });
 
@@ -52,6 +54,7 @@ function updateLayout() {
   const metrics = gridMetrics(folders.clientWidth, height, folderCount, gap);
   folders.style.setProperty("--columns", metrics.columns);
   folders.style.setProperty("--row-height", `${metrics.rowHeight}px`);
+  updateDropIndicator();
 }
 
 function icon(kind) {
@@ -274,6 +277,7 @@ function renderFolder(node, nested = false) {
 
 function render(tree) {
   closeBookmarkMenu();
+  clearDropIndicator();
   const previousPositions = rearrangement.capture();
   const scrollPositions = new Map([...folders.querySelectorAll(".folder-card")]
     .map(card => [card.dataset.folderId, card.querySelector(".folder-content").scrollTop]));
@@ -327,9 +331,37 @@ function scheduleRefresh() {
 }
 
 function clearDropIndicator() {
+  activeDrop = null;
+  dropLine.hidden = true;
   for (const element of document.querySelectorAll("[data-drop]")) {
     delete element.dataset.drop;
   }
+}
+
+function updateDropIndicator() {
+  if (!activeDrop || activeDrop.indicator === "inside") return;
+  const { element, indicator } = activeDrop;
+  const before = indicator === "before";
+  const horizontal = element.parentElement === direct || element.classList.contains("folder-card");
+  const [start, end] = horizontal ? ["left", "right"] : ["top", "bottom"];
+  const box = element.getBoundingClientRect();
+  const neighbor = (before ? element.previousElementSibling : element.nextElementSibling)
+    ?.getBoundingClientRect();
+  let gap = horizontal ? (element.parentElement === direct ? 8 : 16) : 0;
+  if (neighbor && (!horizontal || neighbor.top === box.top)) {
+    gap = before ? box[start] - neighbor[end] : neighbor[start] - box[end];
+  }
+  const center = box[before ? start : end] + (before ? -gap : gap) / 2;
+  // Only the outer card's content scrolls; nested folders overflow visibly.
+  const viewport = horizontal ? box : element.closest(".folder-card")
+    .querySelector(".folder-content").getBoundingClientRect();
+  const top = Math.max(horizontal ? box.top : center - 1, viewport.top);
+  const bottom = Math.min(horizontal ? box.bottom : center + 1, viewport.bottom);
+  dropLine.hidden = bottom <= top;
+  Object.assign(dropLine.style, {
+    left: `${horizontal ? center - 1 : box.left}px`, top: `${top}px`,
+    width: `${horizontal ? 2 : box.width}px`, height: `${Math.max(0, bottom - top)}px`,
+  });
 }
 
 function dropIntent(event, sourceId) {
@@ -389,6 +421,8 @@ document.addEventListener("dragover", event => {
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
     intent.element.dataset.drop = intent.indicator;
+    activeDrop = intent;
+    updateDropIndicator();
   }
 });
 
@@ -430,6 +464,7 @@ for (const event of [browser.bookmarks.onCreated, browser.bookmarks.onChanged,
 }
 
 window.addEventListener("resize", updateLayout);
+document.addEventListener("scroll", updateDropIndicator, true);
 const observer = new ResizeObserver(updateLayout);
 observer.observe(unfoldered);
 observer.observe(status);

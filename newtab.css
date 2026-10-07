@@ -269,11 +269,11 @@ body:not(.bookmark-menu-open) .bookmark:hover > a.item-name,
 [data-dragging="true"] {
   opacity: 0.45;
 }
-[data-drop] {
+[data-drop="inside"] {
   position: relative;
   isolation: isolate;
 }
-[data-drop]::after {
+[data-drop="inside"]::after {
   content: "";
   position: absolute;
   inset: -2px;
@@ -284,26 +284,17 @@ body:not(.bookmark-menu-open) .bookmark:hover > a.item-name,
 [data-drop="inside"]::after {
   box-shadow: inset 0 0 0 1px var(--drop-indicator);
 }
-[data-drop="before"]::after {
-  box-shadow: inset 0 1px var(--drop-indicator);
-}
-[data-drop="after"]::after {
-  box-shadow: inset 0 -1px var(--drop-indicator);
-}
-#direct-bookmarks > .bookmark[data-drop="before"]::after {
-  box-shadow: inset 1px 0 var(--drop-indicator);
-}
-#direct-bookmarks > .bookmark[data-drop="after"]::after {
-  box-shadow: inset -1px 0 var(--drop-indicator);
-}
-.folder-card[data-drop]::after {
+.folder-card[data-drop="inside"]::after {
   inset: 0;
 }
-.folder-card[data-drop="before"]::after {
-  box-shadow: inset 2px 0 var(--drop-indicator);
-}
-.folder-card[data-drop="after"]::after {
-  box-shadow: inset -2px 0 var(--drop-indicator);
+
+/* Outside the cards so their rounded overflow clips cannot hide gap markers. */
+#drop-line {
+  position: fixed;
+  z-index: 2;
+  border-radius: 999px;
+  background: var(--drop-indicator);
+  pointer-events: none;
 }
 
 #status {
