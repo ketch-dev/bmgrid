@@ -75,6 +75,8 @@ function closeBookmarkMenu(restoreFocus = false) {
   const target = menuTarget;
   menuTarget = null;
   bookmarkMenu.hidden = true;
+  document.body.classList.remove("bookmark-menu-open");
+  target?.closest(".bookmark, .folder-heading").removeAttribute("data-menu-target");
   if (restoreFocus && target?.isConnected) target.querySelector(".item-name").focus();
 }
 
@@ -82,8 +84,11 @@ function openBookmarkMenu(event) {
   const row = event.target.closest(".bookmark, .folder-heading");
   if (!row || editing || dragging) return;
   event.preventDefault();
+  closeBookmarkMenu();
   menuTarget = row.querySelector(".item-title-group") ?? row;
   bookmarkMenu.hidden = false;
+  document.body.classList.add("bookmark-menu-open");
+  row.setAttribute("data-menu-target", "");
   const box = menuTarget.querySelector(".item-name").getBoundingClientRect();
   const keyboard = event.type === "keydown" || (event.clientX === 0 && event.clientY === 0);
   const x = keyboard ? box.left : event.clientX;

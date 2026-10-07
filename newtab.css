@@ -138,12 +138,11 @@ button {
   transition: background-color 150ms ease;
 }
 
-.bookmark:hover,
-.bookmark:focus-within {
-  background: var(--surface-hover);
-}
-#direct-bookmarks > .bookmark:hover,
-#direct-bookmarks > .bookmark:focus-within {
+body:not(.bookmark-menu-open) :is(.bookmark, .folder-heading):is(:hover, :has(.item-name:focus-visible, .rename-input:focus)),
+body:not(.bookmark-menu-open) #direct-bookmarks > .bookmark:is(:hover, :has(.item-name:focus-visible, .rename-input:focus)),
+.bookmark[data-menu-target],
+#direct-bookmarks > .bookmark[data-menu-target],
+.folder-heading[data-menu-target] {
   background: var(--surface-hover);
 }
 
@@ -189,7 +188,8 @@ button {
 a.item-name {
   color: #bbbbbb;
 }
-.bookmark:hover > a.item-name {
+body:not(.bookmark-menu-open) .bookmark:hover > a.item-name,
+.bookmark[data-menu-target] > a.item-name {
   color: var(--text);
 }
 
