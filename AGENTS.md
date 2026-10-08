@@ -26,6 +26,7 @@
 - Right-click a bookmark or folder heading to show a small popup with the pen icon and Rename text, and the X icon and Delete text; each action uses a single click. Support the context-menu key and Shift+F10 as well, with keyboard-focusable folder names.
 - Delete immediately and without confirmation; deleting a folder removes its descendants. Dismiss the action popup after an action, outside click, Escape, scrolling, resizing, or refresh.
 - Left-click a bookmark to open it in the current tab; middle-click opens a new tab.
+- Use Firefox's native drag-and-drop, including its preview and cancellation. Preserve manual wheel/touchpad scrolling wherever the browser delivers it. Provide edge auto-scrolling for the page and the outer folder-card content, with narrow edge zones and speed increasing toward the edge; prioritize the card under the pointer and yield to browser-provided scrolling. Re-evaluate targets beneath a stationary pointer after scrolling or resizing. Stop extension auto-scrolling on drop, drag end, Escape, window blur, or leaving the page.
 - Inline rename saves on Enter or blur and cancels on Escape.
 - Ctrl+Z restores extension-made deletions during the browser session; keep normal text undo while editing.
 - Extension undo is separate from Firefox's native undo history and recreates items with new IDs.
@@ -51,6 +52,7 @@
 - `newtab.html`, `newtab.css`, `newtab.js`: grid rendering and interactions.
 - `layout.js`: column and row sizing calculations.
 - `drag-drop.js`: bookmark and folder drop targeting, measured insertion-gap and indicator geometry, and cycle prevention.
+- `drag-scroll.js`: native-DnD edge-scrolling fallback, visible card/page targeting, and coordination with browser-provided scrolling.
 - `rearrangement.js`: captures item positions, animates grid rearrangements and cross-folder moves, and cleans up interrupted animations. Rearrangement animations intentionally remain enabled regardless of `prefers-reduced-motion`, per user preference.
 - `options.html`, `options.css`, `options.js`: Preferences UI and log download.
 - `tests/`: Node tests and the fake bookmarks API.
