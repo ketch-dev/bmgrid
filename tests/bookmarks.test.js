@@ -17,6 +17,120 @@ test("only Other Bookmarks is exposed and native sibling ordering is retained", 
   assert.deepEqual(tree.children.map(node => node.id), ["math", "direct-a", "physics", "direct-b"]);
 });
 
+test("adding siblings preserves native mixed ordering at root and nested levels", async () => {
+  const { api, controller, call } = await setup();
+  for (const [afterId, type, parentId] of [
+    ["direct-a", "bookmark", "unfiled_____"],
+    ["math", "folder", "unfiled_____"],
+    ["math-a", "bookmark", "math"],
+    ["algebra", "folder", "math"],
+    ["algebra-a", "bookmark", "algebra"],
+    ["direct-b", "bookmark", "unfiled_____"],
+  ]) {
+    const original = api.find(parentId).children.map(node => node.id);
+    const created = await call("add", {
+      afterId, type, title: "Added item",
+      ...(type === "bookmark" ? { url: "  example.test/path?x=%2f&value=+#fragment  " } : {}),
+    });
+    const expected = [...original];
+    expected.splice(original.indexOf(afterId) + 1, 0, created.id);
+    assert.deepEqual(api.find(parentId).children.map(node => node.id), expected);
+    assert.equal(created.parentId, parentId);
+    assert.equal(created.type, type);
+    if (type === "bookmark") assert.equal(created.url, "https://example.test/path?x=%2f&value=+#fragment");
+    else assert.deepEqual(api.find(created.id).children, []);
+    await controller.idle();
+    assert.equal(api.storage.session.data.bookmarkCache.find(node => node.id === created.id).parentId, parentId);
+  }
+  assert.equal(await call("log"), "");
+  assert.deepEqual(api.storage.session.data.deletions ?? [], []);
+});
+
+test("background additions append to Other Bookmarks and empty folders accept their first bookmark", async () => {
+  const { api, call } = await setup();
+  const folder = await call("add", { type: "folder", title: "Empty folder", parentId: "unfiled_____" });
+  assert.equal(api.find("unfiled_____").children.at(-1).id, folder.id);
+  const inside = await call("add", { type: "bookmark", title: "First", url: "about:blank", parentId: folder.id });
+  assert.equal(api.find(folder.id).children[0].id, inside.id);
+  const bookmark = await call("add", { type: "bookmark", title: "", url: "https://example.test", parentId: "unfiled_____" });
+  assert.equal(api.find("unfiled_____").children.at(-1).id, bookmark.id);
+  assert.equal(bookmark.title, "");
+  const appended = await call("add", { type: "bookmark", title: "Last", url: "example.test", parentId: "math" });
+  assert.equal(api.find("math").children.at(-1).id, appended.id);
+});
+
+test("additions resolve the anchor's current parent and index after native moves", async () => {
+  const { api, call } = await setup();
+  await api.bookmarks.move("direct-a", { parentId: "math", index: 1 });
+  const added = await call("add", { type: "bookmark", title: "Added", url: "example.test", afterId: "direct-a" });
+  assert.equal(added.parentId, "math");
+  assert.deepEqual(api.find("math").children.map(node => node.id),
+    ["math-a", "direct-a", added.id, "algebra", "separator", "math-b"]);
+});
+
+test("folder additions append inside top-level and nested folders without changing existing siblings", async () => {
+  const { api, controller, call } = await setup();
+  const rootOrder = api.find("unfiled_____").children.map(node => node.id);
+  for (const parentId of ["math", "algebra"]) {
+    const before = api.find(parentId).children.map(node => node.id);
+    const folder = await call("add", { type: "folder", title: "Child folder", parentId });
+    assert.equal(folder.parentId, parentId);
+    assert.deepEqual(api.find(parentId).children.map(node => node.id), [...before, folder.id]);
+    assert.deepEqual(api.find(folder.id).children, []);
+    const bookmark = await call("add", { type: "bookmark", title: "Inside child", url: "example.test", parentId: folder.id });
+    assert.equal(api.find(folder.id).children[0].id, bookmark.id);
+    await controller.idle();
+    assert.equal(api.storage.session.data.bookmarkCache.find(node => node.id === folder.id).parentId, parentId);
+  }
+  assert.deepEqual(api.find("unfiled_____").children.map(node => node.id), rootOrder);
+});
+
+test("invalid additions cannot modify items outside Other Bookmarks or corrupt the tree", async () => {
+  const { call } = await setup();
+  const before = await call("tree");
+  const base = { type: "bookmark", title: "Added", url: "example.test" };
+  for (const destination of [
+    { afterId: "missing" }, { afterId: "toolbar-link" }, { afterId: "separator" },
+    { afterId: "unfiled_____" }, { parentId: "toolbar_____" },
+    { parentId: "direct-a" }, { parentId: "missing" }, {},
+  ]) await assert.rejects(call("add", { ...base, ...destination }));
+  for (const changes of [
+    { type: "separator" }, { type: "invalid" }, { title: null },
+    { url: "" }, { url: "  " }, { url: "not a valid URL" },
+    { url: "https://" }, { url: "example.test:99999/path" },
+    { type: "folder", url: "example.test" },
+  ]) await assert.rejects(call("add", { ...base, parentId: "unfiled_____", ...changes }));
+  assert.deepEqual(await call("tree"), before);
+});
+
+test("deleted or out-of-scope insertion targets fail without falling back to root", async () => {
+  const { api, call } = await setup();
+  await api.bookmarks.remove("direct-a");
+  await api.bookmarks.move("physics", { parentId: "toolbar_____", index: 0 });
+  const before = await call("tree");
+  for (const destination of [{ afterId: "direct-a" }, { afterId: "physics" }, { parentId: "physics" }]) {
+    await assert.rejects(call("add", { type: "bookmark", title: "Draft", url: "example.test", ...destination }),
+      /no longer/);
+  }
+  assert.deepEqual(await call("tree"), before);
+});
+
+test("native creation errors are readable and failed additions can be retried", async () => {
+  const { api, call } = await setup();
+  const before = await call("tree");
+  const create = api.bookmarks.create;
+  const details = { type: "bookmark", title: "Draft", url: "example.test", afterId: "direct-a" };
+  api.bookmarks.create = async () => { throw new Error('Invalid bookmark: {"url":"https://example.test"}'); };
+  await assert.rejects(call("add", details), /Enter a valid URL/);
+  api.bookmarks.create = async () => { throw new Error("Creation failed"); };
+  await assert.rejects(call("add", details), /Creation failed/);
+  assert.deepEqual(await call("tree"), before);
+  api.bookmarks.create = create;
+  const created = await call("add", details);
+  assert.equal(created.title, "Draft");
+  assert.equal(api.find("unfiled_____").children[2].id, created.id);
+});
+
 test("name-only editing renames native folders without modifying their contents or outside items", async () => {
   const { api, call } = await setup();
   const original = structuredClone(api.find("math"));

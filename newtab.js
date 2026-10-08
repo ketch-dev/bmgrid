@@ -1,4 +1,4 @@
-import { nodeType } from "./bookmarks.js";
+import { nodeType, OTHER_BOOKMARKS_ID } from "./bookmarks.js";
 import { createIconProvider } from "./bookmark-icons.js";
 import { dropIntent, dropLineBox } from "./drag-drop.js";
 import { gridMetrics } from "./layout.js";
@@ -10,11 +10,15 @@ const folders = document.querySelector("#folders");
 const status = document.querySelector("#status");
 const bookmarkMenu = document.querySelector("#bookmark-menu");
 const editMenuLabel = bookmarkMenu.querySelector('[data-action="edit"] span');
+const addFolderMenuButton = bookmarkMenu.querySelector('[data-action="add-folder"]');
 const bookmarkEditor = document.querySelector("#bookmark-editor");
+const editorTitle = document.querySelector("#bookmark-editor-title");
+const editorSubmit = document.querySelector("#bookmark-edit-submit");
 const editForm = document.querySelector("#bookmark-edit-form");
 const editFields = document.querySelector("#bookmark-edit-fields");
 const editName = document.querySelector("#bookmark-edit-name");
 const editUrl = document.querySelector("#bookmark-edit-url");
+const editUrlLabel = document.querySelector("#bookmark-edit-url-label");
 const editError = document.querySelector("#bookmark-edit-error");
 const dropLine = document.querySelector("#drop-line");
 const rearrangement = createRearrangement(document.querySelector("#page"));
@@ -79,6 +83,7 @@ function icon(kind) {
   const paths = {
     pen: "M3 10.5 10.5 3l2.5 2.5L5.5 13 2 14l1-3.5ZM9 4.5 11.5 7",
     cross: "M4 4l8 8M12 4l-8 8",
+    plus: "M8 3v10M3 8h10",
   };
   path.setAttribute("d", paths[kind]);
   svg.append(path);
@@ -86,26 +91,34 @@ function icon(kind) {
 }
 
 function closeBookmarkMenu(restoreFocus = false) {
-  const target = menuTarget;
+  const row = menuTarget?.row;
   menuTarget = null;
   bookmarkMenu.hidden = true;
   document.body.classList.remove("bookmark-menu-open");
-  target?.closest(".bookmark, .folder-heading").removeAttribute("data-menu-target");
-  if (restoreFocus && target?.isConnected) target.querySelector(".item-name").focus();
+  row?.closest(".bookmark, .folder-heading").removeAttribute("data-menu-target");
+  if (restoreFocus && row?.isConnected) row.querySelector(".item-name").focus();
 }
 
 function openBookmarkMenu(event) {
   const row = event.target.closest(".bookmark, .folder-heading");
-  if (!row || editing || dragging) return;
+  const background = [document.documentElement, document.body, document.querySelector("#page"),
+    unfoldered, direct, folders].includes(event.target);
+  if ((!row && !background) || editing || dragging) return;
   event.preventDefault();
   closeBookmarkMenu();
-  menuTarget = row.querySelector(".item-title-group") ?? row;
-  editMenuLabel.textContent = nodeType(nodes.get(menuTarget.dataset.itemId)) === "bookmark"
-    ? "Edit" : "Rename";
+  const container = row ? row.querySelector(".item-title-group") ?? row : null;
+  const node = container ? nodes.get(container.dataset.itemId) : null;
+  const isBookmark = node && nodeType(node) === "bookmark";
+  menuTarget = { node, row: container };
+  editMenuLabel.textContent = isBookmark ? "Edit" : "Rename";
+  addFolderMenuButton.hidden = Boolean(isBookmark);
+  for (const action of ["edit", "delete"]) {
+    bookmarkMenu.querySelector(`[data-action="${action}"]`).hidden = !node;
+  }
   bookmarkMenu.hidden = false;
   document.body.classList.add("bookmark-menu-open");
-  row.setAttribute("data-menu-target", "");
-  const box = menuTarget.querySelector(".item-name").getBoundingClientRect();
+  row?.setAttribute("data-menu-target", "");
+  const box = (container?.querySelector(".item-name") ?? unfoldered).getBoundingClientRect();
   const keyboard = event.type === "keydown" || (event.clientX === 0 && event.clientY === 0);
   const x = keyboard ? box.left : event.clientX;
   const y = keyboard ? box.bottom : event.clientY;
@@ -115,18 +128,24 @@ function openBookmarkMenu(event) {
 }
 
 for (const button of bookmarkMenu.children) {
-  button.prepend(icon(button.dataset.action === "edit" ? "pen" : "cross"));
+  button.prepend(icon(button.dataset.action.startsWith("add-") ? "plus"
+    : button.dataset.action === "edit" ? "pen" : "cross"));
 }
 bookmarkMenu.addEventListener("click", event => {
   const action = event.target.closest("button")?.dataset.action;
   if (!action || !menuTarget) return;
-  const row = menuTarget;
-  const node = nodes.get(row.dataset.itemId);
+  const { node, row } = menuTarget;
   closeBookmarkMenu(action === "delete");
-  if (action === "edit") {
+  if (action === "add-bookmark" || action === "add-folder") {
+    const type = action === "add-bookmark" ? "bookmark" : "folder";
+    const destination = !node ? { parentId: OTHER_BOOKMARKS_ID }
+      : nodeType(node) === "folder" ? { parentId: node.id }
+        : { afterId: node.id };
+    startEditor({ mode: "add", type, destination, row });
+  } else if (action === "edit") {
     if (nodeType(node) === "bookmark") startBookmarkEdit(node, row);
     else startFolderRename(node, row);
-  } else perform("delete", { id: node.id });
+  } else if (action === "delete") perform("delete", { id: node.id });
 });
 bookmarkMenu.addEventListener("focusout", event => {
   if (!bookmarkMenu.contains(event.relatedTarget)) closeBookmarkMenu();
@@ -143,11 +162,31 @@ window.addEventListener("resize", () => { closeBookmarkMenu(); });
 window.addEventListener("blur", () => { closeBookmarkMenu(); });
 
 function startBookmarkEdit(node, row) {
+  startEditor({ mode: "edit", type: "bookmark", node, row });
+}
+
+function startEditor(target) {
   if (editing) return;
-  editTarget = { node, row };
+  editTarget = target;
   editing = bookmarkEditor;
-  editName.value = node.title;
-  editUrl.value = node.url;
+  const adding = target.mode === "add";
+  const isBookmark = target.type === "bookmark";
+  editorTitle.textContent = adding ? isBookmark ? "Add Bookmark" : "Add Folder" : "Edit Bookmark";
+  editorTitle.classList.toggle("creation-title", adding);
+  if (adding) {
+    const parentId = target.destination.parentId ?? nodes.get(target.destination.afterId)?.parentId;
+    const folder = parentId === OTHER_BOOKMARKS_ID ? null : nodes.get(parentId);
+    if (folder) {
+      const name = document.createElement("span");
+      name.className = "destination-name";
+      name.textContent = folder.title || "Untitled";
+      editorTitle.append(" to ", name);
+    }
+  }
+  editorSubmit.textContent = adding ? "Add" : "Save";
+  editName.value = adding ? "" : target.node.title;
+  editUrl.value = adding ? "" : target.node.url;
+  editUrl.hidden = editUrlLabel.hidden = !isBookmark;
   editError.hidden = true;
   editFields.disabled = false;
   bookmarkEditor.showModal();
@@ -174,7 +213,7 @@ bookmarkEditor.addEventListener("close", () => {
 bookmarkEditor.addEventListener("keydown", event => {
   if (event.key !== "Tab") return;
   const controls = [...editFields.querySelectorAll("input, button")]
-    .filter(control => !control.matches(":disabled"));
+    .filter(control => !control.matches(":disabled") && !control.hidden);
   if (!controls.length) {
     event.preventDefault();
     return;
@@ -208,20 +247,25 @@ bookmarkEditor.addEventListener("click", event => {
 editForm.addEventListener("submit", async event => {
   event.preventDefault();
   if (!editTarget || editFields.disabled) return;
-  const { node } = editTarget;
-  const changes = {};
-  if (editName.value !== node.title) changes.title = editName.value;
-  if (editUrl.value !== node.url) changes.url = editUrl.value;
+  const { node, mode, type, destination } = editTarget;
   editError.hidden = true;
   editFields.disabled = true;
   try {
-    if (Object.keys(changes).length) await request("edit", { id: node.id, ...changes });
+    if (mode === "add") {
+      await request("add", { ...destination, type, title: editName.value,
+        ...(type === "bookmark" ? { url: editUrl.value } : {}) });
+    } else {
+      const changes = {};
+      if (editName.value !== node.title) changes.title = editName.value;
+      if (editUrl.value !== node.url) changes.url = editUrl.value;
+      if (Object.keys(changes).length) await request("edit", { id: node.id, ...changes });
+    }
     bookmarkEditor.close();
   } catch (error) {
     editError.textContent = error.message ?? String(error);
     editError.hidden = false;
     editFields.disabled = false;
-    editUrl.focus();
+    (type === "bookmark" ? editUrl : editName).focus();
   }
 });
 

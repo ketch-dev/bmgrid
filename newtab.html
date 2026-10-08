@@ -17,6 +17,8 @@
     </main>
     <div id="drop-line" aria-hidden="true" hidden></div>
     <div id="bookmark-menu" class="bookmark-menu" role="group" aria-label="Bookmark and folder actions" hidden>
+      <button type="button" class="menu-button" data-action="add-bookmark">Add Bookmark</button>
+      <button type="button" class="menu-button" data-action="add-folder">Add Folder</button>
       <button type="button" class="menu-button" data-action="edit"><span>Edit</span></button>
       <button type="button" class="menu-button" data-action="delete">Delete</button>
     </div>
@@ -26,12 +28,12 @@
         <fieldset id="bookmark-edit-fields">
           <label for="bookmark-edit-name">Name</label>
           <input id="bookmark-edit-name" type="text" autocomplete="off" autofocus>
-          <label for="bookmark-edit-url">URL</label>
+          <label id="bookmark-edit-url-label" for="bookmark-edit-url">URL</label>
           <input id="bookmark-edit-url" type="text" autocomplete="off" spellcheck="false">
           <p id="bookmark-edit-error" role="alert" hidden></p>
           <div class="editor-actions">
             <button id="bookmark-edit-cancel" type="button">Cancel</button>
-            <button type="submit">Save</button>
+            <button id="bookmark-edit-submit" type="submit">Save</button>
           </div>
         </fieldset>
       </form>

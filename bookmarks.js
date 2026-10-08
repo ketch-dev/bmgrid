@@ -243,6 +243,39 @@ export function createBookmarkController(api) {
     await api.bookmarks.move(id, { parentId: parent.id, index });
   }
 
+  async function add(message) {
+    if (message.type !== "bookmark" && message.type !== "folder") {
+      throw new Error("Invalid bookmark type.");
+    }
+    if (typeof message.title !== "string") throw new Error("Invalid name.");
+    const details = { type: message.type, title: message.title };
+    if (message.type === "bookmark") details.url = normalizeBookmarkUrl(message.url);
+    else if (message.url !== undefined) throw new Error("Folders cannot have a URL.");
+    const nodes = await editableNodes();
+    if (message.afterId !== undefined) {
+      const anchor = requireItem(nodes, message.afterId);
+      const siblings = await api.bookmarks.getChildren(anchor.parentId);
+      const index = siblings.findIndex(child => child.id === anchor.id);
+      if (index < 0) throw new Error("The insertion target no longer exists.");
+      details.parentId = anchor.parentId;
+      details.index = index + 1;
+    } else {
+      const parent = nodes.get(message.parentId);
+      if (!parent || nodeType(parent) !== "folder") {
+        throw new Error("The destination folder no longer exists.");
+      }
+      details.parentId = parent.id;
+    }
+    try {
+      return await api.bookmarks.create(details);
+    } catch (error) {
+      if (details.url !== undefined && error.message?.startsWith("Invalid bookmark:")) {
+        throw new Error(INVALID_URL_MESSAGE);
+      }
+      throw error;
+    }
+  }
+
   async function undo() {
     const entry = deletions.at(-1);
     if (!entry) return;
@@ -300,6 +333,7 @@ export function createBookmarkController(api) {
     return enqueue(async () => {
       switch (message.action) {
         case "tree": return otherTree();
+        case "add": return add(message);
         case "edit": {
           const node = requireItem(await editableNodes(), message.id);
           const changes = {};
