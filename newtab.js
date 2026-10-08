@@ -82,7 +82,7 @@ function icon(kind) {
   const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
   const paths = {
     pen: "M3 10.5 10.5 3l2.5 2.5L5.5 13 2 14l1-3.5ZM9 4.5 11.5 7",
-    cross: "M4 4l8 8M12 4l-8 8",
+    trash: "M2.5 4.5h11M6 4.5V2h4v2.5M4 4.5l.75 9h6.5l.75-9M6.5 7v4M9.5 7v4",
     plus: "M8 3v10M3 8h10",
   };
   path.setAttribute("d", paths[kind]);
@@ -129,7 +129,7 @@ function openBookmarkMenu(event) {
 
 for (const button of bookmarkMenu.children) {
   button.prepend(icon(button.dataset.action.startsWith("add-") ? "plus"
-    : button.dataset.action === "edit" ? "pen" : "cross"));
+    : button.dataset.action === "edit" ? "pen" : "trash"));
 }
 bookmarkMenu.addEventListener("click", event => {
   const action = event.target.closest("button")?.dataset.action;
