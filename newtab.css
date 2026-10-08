@@ -91,6 +91,8 @@ button {
 }
 
 .folder-heading {
+  position: relative;
+  z-index: 1;
   background: var(--header);
   border-radius: 16px 16px 0 0;
   margin: 0;
@@ -99,9 +101,12 @@ button {
   font-size: 15px;
   font-weight: 600;
   cursor: grab;
+  box-shadow: 0 5px 7px -3px rgb(0 0 0 / 40%);
 }
 
 .folder-content {
+  /* Keep nested headings below the enclosing folder's header and shadow. */
+  isolation: isolate;
   flex: 1;
   min-height: 0;
   padding: 8px;
