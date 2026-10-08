@@ -1,20 +1,64 @@
 import { OTHER_BOOKMARKS_ID, canMoveToFolder, nodeType } from "./bookmarks.js";
 
-export function folderGapBox({ previous, next, container }) {
-  const a = previous.getBoundingClientRect();
-  const b = next.getBoundingClientRect();
+const GRID_EDGE_GAP = 16;
+const CONTENT_EDGE_GAP = 8;
+const BOOKMARK_EDGE_GAP = 8;
+const DROP_LINE_WIDTH = 2;
+
+function sameRow(a, b) {
+  return Math.abs(a.top - b.top) < 1;
+}
+
+function validBox(box) {
+  return box.right > box.left && box.bottom > box.top ? box : null;
+}
+
+function sideGapBox(item, bounds, before, gap) {
+  return {
+    left: before ? Math.max(bounds.left, item.left - gap) : item.right,
+    right: before ? item.left : Math.min(bounds.right, item.right + gap),
+    top: item.top, bottom: item.bottom, vertical: true,
+  };
+}
+
+// A boundary keeps its native siblings separate from the hovered edge. Most
+// gaps share hit/indicator areas; grid top/bottom zones indicate at a card side.
+export function folderGapGeometry({ previous, next, container, edge }) {
   const grid = container.id === "folders";
-  const vertical = grid && Math.abs(a.top - b.top) < 1;
-  const box = vertical
-    ? { left: a.right, right: b.left, top: Math.max(a.top, b.top), bottom: Math.min(a.bottom, b.bottom) }
-    : { left: Math.max(a.left, b.left), right: Math.min(a.right, b.right), top: a.bottom, bottom: b.top };
-  // A wrapped grid boundary separates whole rows, rather than two columns.
-  if (grid && !vertical) {
+  let hitBox;
+  let indicatorBox;
+  if (edge) {
+    const before = edge === "left" || edge === "top";
+    const item = (before ? next : previous).getBoundingClientRect();
     const bounds = container.getBoundingClientRect();
-    box.left = bounds.left;
-    box.right = bounds.right;
+    const outer = grid ? container.parentElement.getBoundingClientRect() : bounds;
+    const gap = grid ? GRID_EDGE_GAP : CONTENT_EDGE_GAP;
+    if (edge === "left" || edge === "right") {
+      hitBox = sideGapBox(item, outer, before, gap);
+      indicatorBox = hitBox;
+    } else {
+      const preceding = grid ? container.previousElementSibling?.getBoundingClientRect() : null;
+      const start = preceding?.height > 0 ? preceding.bottom : outer.top;
+      hitBox = {
+        left: grid ? bounds.left : Math.max(bounds.left, item.left),
+        right: grid ? bounds.right : Math.min(bounds.right, item.right),
+        top: before ? Math.max(outer.top, start, item.top - gap) : item.bottom,
+        bottom: before ? item.top : Math.min(outer.bottom, item.bottom + gap),
+        vertical: false,
+      };
+      indicatorBox = grid ? sideGapBox(item, outer, before, gap) : hitBox;
+    }
+  } else {
+    const a = previous.getBoundingClientRect();
+    const b = next.getBoundingClientRect();
+    // Wrapped boundaries have two explicit side gaps, never a between-row zone.
+    if (grid && !sameRow(a, b)) return null;
+    hitBox = grid
+      ? { left: a.right, right: b.left, top: Math.max(a.top, b.top), bottom: Math.min(a.bottom, b.bottom), vertical: true }
+      : { left: Math.max(a.left, b.left), right: Math.min(a.right, b.right), top: a.bottom, bottom: b.top, vertical: false };
+    indicatorBox = hitBox;
   }
-  return box.right > box.left && box.bottom > box.top ? { ...box, vertical } : null;
+  return validBox(hitBox) ? { hitBox, indicatorBox: validBox(indicatorBox) } : null;
 }
 
 export function dropLineBox(intent) {
@@ -23,7 +67,7 @@ export function dropLineBox(intent) {
   let box;
   let viewport;
   if (boundary) {
-    box = folderGapBox(boundary);
+    box = folderGapGeometry(boundary)?.indicatorBox;
     if (!box) return null;
     viewport = boundary.container.closest(".folder-card")
       ?.querySelector(".folder-content").getBoundingClientRect();
@@ -35,7 +79,7 @@ export function dropLineBox(intent) {
     const [start, end] = vertical ? ["left", "right"] : ["top", "bottom"];
     const neighbor = (before ? element.previousElementSibling : element.nextElementSibling)
       ?.getBoundingClientRect();
-    let gap = vertical ? 8 : 0;
+    let gap = vertical ? BOOKMARK_EDGE_GAP : 0;
     if (neighbor && (!vertical || neighbor.top === bounds.top)) {
       gap = before ? bounds[start] - neighbor[end] : neighbor[start] - bounds[end];
     }
@@ -49,27 +93,48 @@ export function dropLineBox(intent) {
       viewport = { top: bounds.top, bottom: bounds.bottom };
     }
   }
-  const x = box.vertical ? (box.left + box.right) / 2 - 1 : box.left;
-  const y = box.vertical ? box.top : (box.top + box.bottom) / 2 - 1;
+  const x = box.vertical ? (box.left + box.right) / 2 - DROP_LINE_WIDTH / 2 : box.left;
+  const y = box.vertical ? box.top : (box.top + box.bottom) / 2 - DROP_LINE_WIDTH / 2;
   const left = Math.max(x, viewport?.left ?? x);
-  const right = Math.min(box.vertical ? x + 2 : box.right, viewport?.right ?? Infinity);
+  const right = Math.min(box.vertical ? x + DROP_LINE_WIDTH : box.right, viewport?.right ?? Infinity);
   const top = Math.max(y, viewport?.top ?? y);
-  const bottom = Math.min(box.vertical ? box.bottom : y + 2, viewport?.bottom ?? Infinity);
+  const bottom = Math.min(box.vertical ? box.bottom : y + DROP_LINE_WIDTH, viewport?.bottom ?? Infinity);
   return right > left && bottom > top
     ? { left, top, width: right - left, height: bottom - top } : null;
 }
 
 function folderGap(event) {
-  const container = event.target.closest(".folder-content, #folders");
+  const container = event.target.closest(".folder-content, #folders")
+    ?? event.target.closest("#page")?.querySelector("#folders");
   if (!container) return null;
-  const children = [...container.children];
+  const children = [...container.children].filter(child => child.dataset.folderId || child.dataset.bookmarkId);
+  if (!children.length) return null;
+  const boundaries = [];
   for (let index = 1; index < children.length; index++) {
     const previous = children[index - 1];
     const next = children[index];
     // Preserve insertion positions among mixed native folder contents as well.
     if (!previous.dataset.folderId && !next.dataset.folderId) continue;
     const boundary = { previous, next, container };
-    const box = folderGapBox(boundary);
+    if (container.id === "folders"
+        && !sameRow(previous.getBoundingClientRect(), next.getBoundingClientRect())) {
+      // Both row sides share the same native insertion anchor, but each keeps
+      // its own geometry so the marker stays beside the hovered row.
+      boundaries.push({ ...boundary, edge: "right" }, { ...boundary, edge: "left" });
+    } else {
+      boundaries.push(boundary);
+    }
+  }
+  for (const edge of container.id === "folders" ? ["left", "right", "top", "bottom"] : ["top", "bottom"]) {
+    const before = edge === "left" || edge === "top";
+    boundaries.push({
+      previous: before ? null : children.at(-1),
+      next: before ? children[0] : null,
+      container, edge,
+    });
+  }
+  for (const boundary of boundaries) {
+    const box = folderGapGeometry(boundary)?.hitBox;
     if (box && event.clientX > box.left && event.clientX < box.right
         && event.clientY > box.top && event.clientY < box.bottom) return boundary;
   }
@@ -100,9 +165,9 @@ export function dropIntent(event, sourceId, nodes) {
   if (nodeType(source) === "folder") {
     const boundary = folderGap(event);
     if (boundary) {
-      const id = element => element.dataset.folderId ?? element.dataset.bookmarkId;
+      const id = element => element?.dataset.folderId ?? element?.dataset.bookmarkId;
       // Anchor to the other sibling when the source borders its own gap.
-      const before = id(boundary.next) !== sourceId;
+      const before = !!boundary.next && id(boundary.next) !== sourceId;
       const element = before ? boundary.next : boundary.previous;
       const intent = beside(element, nodes.get(id(element)), before);
       return intent ? { ...intent, boundary } : null;

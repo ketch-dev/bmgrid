@@ -12,7 +12,7 @@
 - List folder contents vertically in native order. Render deeper folders as always-expanded, indented sections.
 - The unfoldered-first presentation is a display rule; do not reorder native bookmarks just to render it.
 - Support moving bookmarks and folders within and between displayed folders and the unfoldered area, including reordering sibling folders. Prevent moving folders into themselves or their descendants.
-- Dropping a folder anywhere on another folder's heading or contents nests it. Reordering uses the actual gaps between sibling cards or sections, with an insertion line in the gap. Wrapped grid row gaps insert before the first card in the next row; nested gaps preserve native mixed bookmark/folder ordering.
+- Dropping a folder anywhere on another folder's heading or contents nests it. Reordering uses the actual gaps between sibling cards or sections. Grid insertion lines are always vertical. At a wrapped row boundary, the narrow gap right of the previous row's last card and the narrow gap left of the next row's first card insert at the same native position, with the line beside the hovered card; the space between rows is not a folder insertion target. Top/bottom end gaps show a line beside the first/last card. Inside folders, insertion lines are horizontal in the gap, preserving native mixed bookmark/folder ordering.
 - The `#folders` container accepts folder drops only in measured insertion gaps, never as a generic root destination. Its background and unused grid space accept bookmark drops. The unfoldered area accepts both bookmarks and folders.
 - Observe bookmark events so changes made in Firefox's native UI appear in the grid.
 
