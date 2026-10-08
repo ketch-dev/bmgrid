@@ -138,8 +138,9 @@ button {
   transition: background-color 150ms ease;
 }
 
-body:not(.bookmark-menu-open) :is(.bookmark, .folder-heading):is(:hover, :has(.item-name:focus-visible, .rename-input:focus)),
-body:not(.bookmark-menu-open) #direct-bookmarks > .bookmark:is(:hover, :has(.item-name:focus-visible, .rename-input:focus)),
+body:not(.bookmark-menu-open) .bookmark:is(:hover, :has(.item-name:focus-visible)),
+body:not(.bookmark-menu-open) #direct-bookmarks > .bookmark:is(:hover, :has(.item-name:focus-visible)),
+body:not(.bookmark-menu-open) .folder-heading:is(:hover, :has(.item-name:focus-visible, .folder-rename-input:focus)),
 .bookmark[data-menu-target],
 #direct-bookmarks > .bookmark[data-menu-target],
 .folder-heading[data-menu-target] {
@@ -169,7 +170,7 @@ body:not(.bookmark-menu-open) #direct-bookmarks > .bookmark:is(:hover, :has(.ite
 }
 
 .item-name,
-.rename-input {
+.folder-rename-input {
   flex: 1 1 auto;
   min-width: 0;
   margin-right: 6px;
@@ -193,7 +194,7 @@ body:not(.bookmark-menu-open) .bookmark:hover > a.item-name,
   color: var(--text);
 }
 
-/* Stretch the native link over its row; hiding it for rename hides this too. */
+/* Stretch the native link over its entire bookmark row. */
 .bookmark > a.item-name::after {
   content: "";
   position: absolute;
@@ -209,8 +210,7 @@ body:not(.bookmark-menu-open) .bookmark:hover > a.item-name,
   background-clip: padding-box;
 }
 
-.bookmark > .item-name,
-.bookmark > .rename-input {
+.bookmark > .item-name {
   margin-right: 0;
 }
 
@@ -248,7 +248,7 @@ body:not(.bookmark-menu-open) .bookmark:hover > a.item-name,
   background: var(--surface-hover);
 }
 
-.rename-input {
+.folder-rename-input {
   height: 24px;
   padding: 1px 6px;
   border: 1px solid var(--indicator);
@@ -256,6 +256,74 @@ body:not(.bookmark-menu-open) .bookmark:hover > a.item-name,
   color: var(--text);
   background: var(--canvas);
   caret-color: var(--text);
+}
+
+#bookmark-editor {
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+}
+
+#bookmark-editor::backdrop {
+  background: rgb(0 0 0 / 55%);
+}
+
+#bookmark-editor h2 {
+  margin: 0 0 18px;
+  font-size: 16px;
+}
+
+#bookmark-edit-fields {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+#bookmark-edit-fields input {
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 8px;
+  padding: 8px;
+  border: 1px solid var(--indicator);
+  border-radius: 5px;
+  color: var(--text);
+  background: var(--canvas);
+}
+
+#bookmark-edit-error {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.editor-actions button {
+  padding: 7px 14px;
+  border: 1px solid var(--indicator);
+  border-radius: 5px;
+  background: var(--header);
+  cursor: pointer;
+}
+
+.editor-actions button:hover {
+  background: var(--surface-hover);
+}
+
+#bookmark-edit-fields:disabled {
+  opacity: 0.6;
 }
 
 ::selection {

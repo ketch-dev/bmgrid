@@ -1,8 +1,26 @@
 export const OTHER_BOOKMARKS_ID = "unfiled_____";
 export const LOG_LIMIT = 100;
+const INVALID_URL_MESSAGE = "Enter a valid URL, such as https://example.com.";
 
 export function nodeType(node) {
   return node.type ?? (node.url === undefined ? "folder" : "bookmark");
+}
+
+function normalizeBookmarkUrl(value) {
+  if (typeof value !== "string") throw new Error(INVALID_URL_MESSAGE);
+  const url = value.trim();
+  const hasScheme = /^[a-z][a-z\d+.-]*:/i.test(url);
+  // Hostnames with ports look like schemes to the URL parser.
+  const hostWithPort = /^(?:localhost|[^\s/?#:]+\.[^\s/?#:]+|\[[\da-f:]+\]):\d+(?:[/?#]|$)/i.test(url);
+  const normalized = url.startsWith("//") ? `https:${url}`
+    : hasScheme && !hostWithPort ? url : `https://${url}`;
+  try {
+    new URL(normalized);
+  } catch {
+    throw new Error(INVALID_URL_MESSAGE);
+  }
+  // Validate without serializing: keep query encoding, fragments, and schemes.
+  return normalized;
 }
 
 export function canMoveToFolder(nodes, sourceId, parentId) {
@@ -282,10 +300,26 @@ export function createBookmarkController(api) {
     return enqueue(async () => {
       switch (message.action) {
         case "tree": return otherTree();
-        case "rename": {
-          requireItem(await editableNodes(), message.id);
-          if (typeof message.title !== "string") throw new Error("Invalid name.");
-          return api.bookmarks.update(message.id, { title: message.title });
+        case "edit": {
+          const node = requireItem(await editableNodes(), message.id);
+          const changes = {};
+          if (message.title !== undefined) {
+            if (typeof message.title !== "string") throw new Error("Invalid name.");
+            changes.title = message.title;
+          }
+          if (message.url !== undefined) {
+            if (nodeType(node) !== "bookmark") throw new Error("Only bookmarks have a URL to edit.");
+            changes.url = normalizeBookmarkUrl(message.url);
+          }
+          if (!Object.keys(changes).length) throw new Error("No bookmark changes provided.");
+          try {
+            return await api.bookmarks.update(message.id, changes);
+          } catch (error) {
+            if (changes.url !== undefined && error.message?.startsWith("Invalid bookmark:")) {
+              throw new Error(INVALID_URL_MESSAGE);
+            }
+            throw error;
+          }
         }
         case "move": return move(message.id, message.destination);
         case "delete": return remove(message.id);

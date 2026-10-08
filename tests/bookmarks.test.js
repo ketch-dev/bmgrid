@@ -17,13 +17,121 @@ test("only Other Bookmarks is exposed and native sibling ordering is retained", 
   assert.deepEqual(tree.children.map(node => node.id), ["math", "direct-a", "physics", "direct-b"]);
 });
 
-test("renaming updates the actual bookmark and cannot modify items outside Other Bookmarks", async () => {
+test("name-only editing renames native folders without modifying their contents or outside items", async () => {
   const { api, call } = await setup();
-  await call("rename", { id: "algebra-a", title: "A renamed bookmark" });
-  assert.equal(api.find("algebra-a").title, "A renamed bookmark");
-  await assert.rejects(call("rename", { id: "toolbar-link", title: "Wrong" }));
+  const original = structuredClone(api.find("math"));
+  await call("edit", { id: "math", title: "A renamed folder" });
+  assert.deepEqual(api.find("math"), { ...original, title: "A renamed folder" });
+  await call("edit", { id: "algebra", title: "A renamed nested folder" });
+  assert.equal(api.find("algebra").title, "A renamed nested folder");
+  await assert.rejects(call("edit", { id: "toolbar-link", title: "Wrong" }));
   await assert.rejects(call("delete", { id: "unfiled_____" }));
   assert.equal(api.find("toolbar-link").title, "Toolbar link");
+});
+
+test("editing updates the native name and exact URL, retaining placement and deletion history", async () => {
+  const { api, controller, call } = await setup();
+  const original = structuredClone(api.find("algebra-a"));
+  const title = "Edited bookmark";
+  const url = "https://edited.test/path_(item)?x=%2F&value=+text#fragment";
+  await call("edit", { id: original.id, title, url });
+  await controller.idle();
+  assert.deepEqual(api.find(original.id), { ...original, title, url });
+  const cached = api.storage.session.data.bookmarkCache.find(node => node.id === original.id);
+  assert.equal(cached.title, title);
+  assert.equal(cached.url, url);
+  await call("delete", { id: "math" });
+  await controller.idle();
+  assert.match(await call("log"), /Edited bookmark \(https:\/\/edited\.test\/path_\(item\)\?x=%2F&value=\+text#fragment\)/);
+  await call("undo");
+  const restored = (await call("tree")).children[0].children[1].children[0];
+  assert.equal(restored.title, title);
+  assert.equal(restored.url, url);
+});
+
+test("name-only and URL-only edits preserve the other field, including non-web URLs", async () => {
+  const { api, call } = await setup();
+  const url = api.find("direct-a").url;
+  await call("edit", { id: "direct-a", title: "" });
+  assert.equal(api.find("direct-a").title, "");
+  assert.equal(api.find("direct-a").url, url);
+  await call("edit", { id: "direct-a", url: "about:blank" });
+  assert.equal(api.find("direct-a").title, "");
+  assert.equal(api.find("direct-a").url, "about:blank");
+});
+
+test("URL editing defaults bare addresses to HTTPS and preserves explicit URLs", async () => {
+  const { api, call } = await setup();
+  for (const [input, expected] of [
+    ["yandex.by", "https://yandex.by"],
+    ["  yandex.by/path?x=%2F&value=+text#fragment  ", "https://yandex.by/path?x=%2F&value=+text#fragment"],
+    ["example.test:8443/path", "https://example.test:8443/path"],
+    ["localhost:8080/path", "https://localhost:8080/path"],
+    ["127.0.0.1:8080/path", "https://127.0.0.1:8080/path"],
+    ["[::1]:8080/path", "https://[::1]:8080/path"],
+    ["//yandex.by/path", "https://yandex.by/path"],
+    ["http://yandex.by/path?x=%2f&value=+#fragment", "http://yandex.by/path?x=%2f&value=+#fragment"],
+    ["https://yandex.by", "https://yandex.by"],
+    ["about:blank", "about:blank"],
+    ["mailto:person@example.test", "mailto:person@example.test"],
+    ["file:///tmp/bookmark.html", "file:///tmp/bookmark.html"],
+    ["custom:123", "custom:123"],
+  ]) {
+    await call("edit", { id: "direct-a", url: input });
+    assert.equal(api.find("direct-a").url, expected);
+    assert.equal(api.find("direct-a").title, "Direct A");
+  }
+});
+
+test("malformed edited URLs produce readable errors before updating either field", async () => {
+  const { api, call } = await setup();
+  const before = await call("tree");
+  let updates = 0;
+  api.bookmarks.update = async () => { updates++; };
+  for (const url of ["", "  ", "not a valid URL", "https://", "https://[invalid]", "yandex.by:99999/path"]) {
+    await assert.rejects(call("edit", { id: "direct-a", title: "Unsaved name", url }),
+      /Enter a valid URL, such as https:\/\/example\.com\./);
+  }
+  assert.equal(updates, 0);
+  assert.deepEqual(await call("tree"), before);
+});
+
+test("native invalid-bookmark errors are readable while other failures remain specific", async () => {
+  const { api, call } = await setup();
+  api.bookmarks.update = async () => {
+    throw new Error('Invalid bookmark: {"guid":"example","url":"https://example.test"}');
+  };
+  await assert.rejects(call("edit", { id: "direct-a", url: "example.test" }),
+    /^Error: Enter a valid URL, such as https:\/\/example\.com\.$/);
+  api.bookmarks.update = async () => { throw new Error("Bookmark not found"); };
+  await assert.rejects(call("edit", { id: "direct-a", url: "example.test" }), /Bookmark not found/);
+});
+
+test("invalid edits and native update failures leave bookmarks intact and later edits work", async () => {
+  const { api, call } = await setup();
+  const before = await call("tree");
+  for (const details of [
+    { id: "toolbar-link", title: "Wrong", url: "https://wrong.test/" },
+    { id: "unfiled_____", title: "Wrong" },
+    { id: "math", url: "https://wrong.test/" },
+    { id: "math", title: "Wrong", url: "https://wrong.test/" },
+    { id: "separator", title: "Wrong" },
+    { id: "missing", title: "Wrong" },
+    { id: "direct-a", title: 42 },
+    { id: "direct-a", title: "Wrong", url: null },
+    { id: "direct-a" },
+  ]) {
+    await assert.rejects(call("edit", details));
+  }
+  const update = api.bookmarks.update;
+  api.bookmarks.update = async () => { throw new Error("Invalid native URL"); };
+  await assert.rejects(call("edit", { id: "direct-a", title: "Wrong", url: "invalid" }), /Invalid native URL/);
+  assert.deepEqual(await call("tree"), before);
+  assert.equal(api.find("toolbar-link").title, "Toolbar link");
+  api.bookmarks.update = update;
+  await call("edit", { id: "direct-a", url: "https://corrected.test/" });
+  assert.equal(api.find("direct-a").url, "https://corrected.test/");
+  assert.equal(await call("log"), "");
 });
 
 test("moves use real sibling indices with interleaved direct bookmarks and folders", async () => {

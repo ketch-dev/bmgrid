@@ -23,10 +23,12 @@
 - Preserve minimum dimensions on small windows rather than shrinking cards below these limits.
 
 ## Interactions
-- Right-click a bookmark or folder heading to show a small popup with the pen icon and Rename text, and the X icon and Delete text; each action uses a single click. Support the context-menu key and Shift+F10 as well, with keyboard-focusable folder names.
+- Right-click a bookmark or folder heading to show a small popup with the pen icon and Edit text for bookmarks or Rename text for folders, and the X icon and Delete text; each action uses a single click. Support the context-menu key and Shift+F10 as well, with keyboard-focusable folder names.
 - Delete immediately and without confirmation; deleting a folder removes its descendants. Dismiss the action popup after an action, outside click, Escape, scrolling, resizing, or refresh.
 - Left-click a bookmark to open it in the current tab; middle-click opens a new tab.
-- Inline rename saves on Enter or blur and cancels on Escape.
+- Bookmark Edit opens a compact modal with Name and URL fields. Save or Enter updates changed fields in the native bookmark; Cancel, Escape, or clicking outside cancels. Retain input and show errors when saving fails. Defer grid refresh while editing, preserve text undo, and restore bookmark focus after closing.
+- When editing a URL, trim surrounding whitespace and default scheme-less addresses to HTTPS. Preserve explicit schemes and exact query/fragment text; show readable validation errors without discarding the draft.
+- Inline folder rename saves on Enter or blur and cancels on Escape.
 - Ctrl+Z restores extension-made deletions during the browser session; keep normal text undo while editing.
 - Extension undo is separate from Firefox's native undo history and recreates items with new IDs.
 

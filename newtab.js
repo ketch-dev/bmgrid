@@ -9,6 +9,13 @@ const direct = document.querySelector("#direct-bookmarks");
 const folders = document.querySelector("#folders");
 const status = document.querySelector("#status");
 const bookmarkMenu = document.querySelector("#bookmark-menu");
+const editMenuLabel = bookmarkMenu.querySelector('[data-action="edit"] span');
+const bookmarkEditor = document.querySelector("#bookmark-editor");
+const editForm = document.querySelector("#bookmark-edit-form");
+const editFields = document.querySelector("#bookmark-edit-fields");
+const editName = document.querySelector("#bookmark-edit-name");
+const editUrl = document.querySelector("#bookmark-edit-url");
+const editError = document.querySelector("#bookmark-edit-error");
 const dropLine = document.querySelector("#drop-line");
 const rearrangement = createRearrangement(document.querySelector("#page"));
 const DRAG_TYPE = "application/x-bmgrid-bookmark";
@@ -21,6 +28,7 @@ let pendingRefresh = false;
 let refreshTimer;
 let refreshVersion = 0;
 let menuTarget = null;
+let editTarget = null;
 let activeDrop = null;
 const icons = createIconProvider(browser, updateBookmarkIcons);
 icons.ready.catch(error => { console.error("Bookmark Grid icons:", error); });
@@ -92,6 +100,8 @@ function openBookmarkMenu(event) {
   event.preventDefault();
   closeBookmarkMenu();
   menuTarget = row.querySelector(".item-title-group") ?? row;
+  editMenuLabel.textContent = nodeType(nodes.get(menuTarget.dataset.itemId)) === "bookmark"
+    ? "Edit" : "Rename";
   bookmarkMenu.hidden = false;
   document.body.classList.add("bookmark-menu-open");
   row.setAttribute("data-menu-target", "");
@@ -105,7 +115,7 @@ function openBookmarkMenu(event) {
 }
 
 for (const button of bookmarkMenu.children) {
-  button.prepend(icon(button.dataset.action === "rename" ? "pen" : "cross"));
+  button.prepend(icon(button.dataset.action === "edit" ? "pen" : "cross"));
 }
 bookmarkMenu.addEventListener("click", event => {
   const action = event.target.closest("button")?.dataset.action;
@@ -113,8 +123,10 @@ bookmarkMenu.addEventListener("click", event => {
   const row = menuTarget;
   const node = nodes.get(row.dataset.itemId);
   closeBookmarkMenu(action === "delete");
-  if (action === "rename") startRename(node, row, row.querySelector(".item-name"));
-  else perform("delete", { id: node.id });
+  if (action === "edit") {
+    if (nodeType(node) === "bookmark") startBookmarkEdit(node, row);
+    else startFolderRename(node, row);
+  } else perform("delete", { id: node.id });
 });
 bookmarkMenu.addEventListener("focusout", event => {
   if (!bookmarkMenu.contains(event.relatedTarget)) closeBookmarkMenu();
@@ -130,18 +142,97 @@ document.addEventListener("scroll", () => { closeBookmarkMenu(); }, true);
 window.addEventListener("resize", () => { closeBookmarkMenu(); });
 window.addEventListener("blur", () => { closeBookmarkMenu(); });
 
-function startRename(node, container, name) {
+function startBookmarkEdit(node, row) {
   if (editing) return;
-  const unfolderedWidth = container.parentElement === direct
-    ? container.getBoundingClientRect().width : null;
+  editTarget = { node, row };
+  editing = bookmarkEditor;
+  editName.value = node.title;
+  editUrl.value = node.url;
+  editError.hidden = true;
+  editFields.disabled = false;
+  bookmarkEditor.showModal();
+  editName.focus();
+  editName.select();
+}
+
+function cancelEdit() {
+  if (!editFields.disabled) bookmarkEditor.close();
+}
+
+document.querySelector("#bookmark-edit-cancel").addEventListener("click", cancelEdit);
+bookmarkEditor.addEventListener("cancel", event => {
+  event.preventDefault();
+  cancelEdit();
+});
+bookmarkEditor.addEventListener("close", () => {
+  const row = editTarget?.row;
+  editTarget = null;
+  editing = null;
+  if (row?.isConnected) row.querySelector(".item-name").focus();
+  scheduleRefresh();
+});
+bookmarkEditor.addEventListener("keydown", event => {
+  if (event.key !== "Tab") return;
+  const controls = [...editFields.querySelectorAll("input, button")]
+    .filter(control => !control.matches(":disabled"));
+  if (!controls.length) {
+    event.preventDefault();
+    return;
+  }
+  const first = controls[0];
+  const last = controls.at(-1);
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+});
+
+function outsideEditor(event) {
+  const box = bookmarkEditor.getBoundingClientRect();
+  return event.target === bookmarkEditor && (event.clientX < box.left || event.clientX > box.right
+    || event.clientY < box.top || event.clientY > box.bottom);
+}
+
+let editorBackdropPressed = false;
+bookmarkEditor.addEventListener("pointerdown", event => {
+  editorBackdropPressed = outsideEditor(event);
+});
+bookmarkEditor.addEventListener("click", event => {
+  if (editorBackdropPressed && outsideEditor(event)) cancelEdit();
+  editorBackdropPressed = false;
+});
+
+editForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!editTarget || editFields.disabled) return;
+  const { node } = editTarget;
+  const changes = {};
+  if (editName.value !== node.title) changes.title = editName.value;
+  if (editUrl.value !== node.url) changes.url = editUrl.value;
+  editError.hidden = true;
+  editFields.disabled = true;
+  try {
+    if (Object.keys(changes).length) await request("edit", { id: node.id, ...changes });
+    bookmarkEditor.close();
+  } catch (error) {
+    editError.textContent = error.message ?? String(error);
+    editError.hidden = false;
+    editFields.disabled = false;
+    editUrl.focus();
+  }
+});
+
+function startFolderRename(node, container) {
+  if (editing) return;
+  const name = container.querySelector(".item-name");
   const input = document.createElement("input");
-  input.className = "rename-input";
-  input.style.width = `${name.getBoundingClientRect().width}px`;
+  input.className = "folder-rename-input";
   input.value = node.title;
-  input.setAttribute("aria-label", `Rename ${node.title || node.url || "folder"}`);
+  input.setAttribute("aria-label", `Rename ${node.title || "folder"}`);
   editing = input;
-  // Keep content-sized bookmarks at their original width while editing.
-  if (unfolderedWidth !== null) container.style.width = `${unfolderedWidth}px`;
   name.hidden = true;
   container.insertBefore(input, name);
   input.focus();
@@ -155,14 +246,13 @@ function startRename(node, container, name) {
     input.disabled = true;
     if (save && title !== node.title) {
       try {
-        await request("rename", { id: node.id, title });
+        await request("edit", { id: node.id, title });
       } catch (error) {
         showError(error);
       }
     }
     editing = null;
     input.remove();
-    if (unfolderedWidth !== null) container.style.removeProperty("width");
     name.hidden = false;
     scheduleRefresh();
   }
@@ -277,6 +367,7 @@ function renderFolder(node, nested = false) {
 }
 
 function render(tree) {
+  const focusedId = document.activeElement.closest("[data-item-id]")?.dataset.itemId;
   closeBookmarkMenu();
   clearDropIndicator();
   const previousPositions = rearrangement.capture();
@@ -304,6 +395,9 @@ function render(tree) {
     card.querySelector(".folder-content").scrollTop = scrollPositions.get(card.dataset.folderId) ?? 0;
   }
   rearrangement.play(previousPositions);
+  if (focusedId) {
+    document.querySelector(`[data-item-id="${CSS.escape(focusedId)}"] .item-name`)?.focus();
+  }
 }
 
 async function refresh() {
@@ -386,7 +480,7 @@ document.addEventListener("keydown", event => {
     return;
   }
   if (event.ctrlKey && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "z"
-      && !event.target.closest("input, textarea, [contenteditable]")) {
+      && !editing && !event.target.closest("input, textarea, [contenteditable]")) {
     event.preventDefault();
     perform("undo");
   }

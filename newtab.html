@@ -17,8 +17,24 @@
     </main>
     <div id="drop-line" aria-hidden="true" hidden></div>
     <div id="bookmark-menu" class="bookmark-menu" role="group" aria-label="Bookmark and folder actions" hidden>
-      <button type="button" class="menu-button" data-action="rename">Rename</button>
+      <button type="button" class="menu-button" data-action="edit"><span>Edit</span></button>
       <button type="button" class="menu-button" data-action="delete">Delete</button>
     </div>
+    <dialog id="bookmark-editor" aria-labelledby="bookmark-editor-title">
+      <form id="bookmark-edit-form">
+        <h2 id="bookmark-editor-title">Edit Bookmark</h2>
+        <fieldset id="bookmark-edit-fields">
+          <label for="bookmark-edit-name">Name</label>
+          <input id="bookmark-edit-name" type="text" autocomplete="off" autofocus>
+          <label for="bookmark-edit-url">URL</label>
+          <input id="bookmark-edit-url" type="text" autocomplete="off" spellcheck="false">
+          <p id="bookmark-edit-error" role="alert" hidden></p>
+          <div class="editor-actions">
+            <button id="bookmark-edit-cancel" type="button">Cancel</button>
+            <button type="submit">Save</button>
+          </div>
+        </fieldset>
+      </form>
+    </dialog>
   </body>
 </html>
