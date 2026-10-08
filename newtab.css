@@ -8,7 +8,7 @@
   --surface-hover: #242424;
   --border: #222222;
   --text: #cccccc;
-  --indicator: #bbbbbb;
+  --focus: #444444;
   --drop-indicator: #999999;
   color: var(--text);
   background: var(--canvas);
@@ -262,7 +262,7 @@ body:not(.bookmark-menu-open) .bookmark:hover > a.item-name,
 .folder-rename-input {
   height: 24px;
   padding: 1px 6px;
-  border: 1px solid var(--indicator);
+  border: 1px solid var(--focus);
   border-radius: 5px;
   color: var(--text);
   background: var(--canvas);
@@ -312,7 +312,7 @@ body:not(.bookmark-menu-open) .bookmark:hover > a.item-name,
   min-width: 0;
   margin-bottom: 8px;
   padding: 8px;
-  border: 1px solid var(--indicator);
+  border: 1px solid var(--border);
   border-radius: 5px;
   color: var(--text);
   background: var(--canvas);
@@ -332,7 +332,7 @@ body:not(.bookmark-menu-open) .bookmark:hover > a.item-name,
 
 .editor-actions button {
   padding: 7px 14px;
-  border: 1px solid var(--indicator);
+  border: 1px solid var(--border);
   border-radius: 5px;
   background: var(--header);
   cursor: pointer;
@@ -351,9 +351,10 @@ body:not(.bookmark-menu-open) .bookmark:hover > a.item-name,
   background: #555555;
 }
 :focus-visible {
-  outline: 2px solid var(--indicator);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
+
 [data-dragging="true"] {
   opacity: 0.45;
 }
