@@ -16,6 +16,7 @@ const bookmarkEditor = document.querySelector("#bookmark-editor");
 const dropLine = document.querySelector("#drop-line");
 const rearrangement = createRearrangement(document.querySelector("#page"));
 const DRAG_TYPE = "application/x-bmgrid-bookmark";
+const SCROLL_SHADOW_FADE_DISTANCE = 16;
 const DEFAULT_FAVICON = browser.runtime.getURL("bookmark.svg");
 let nodes = new Map();
 let folderCount = 0;
@@ -64,7 +65,22 @@ function updateLayout() {
   const metrics = gridMetrics(folders.clientWidth, height, folderCount, gap);
   folders.style.setProperty("--columns", metrics.columns);
   folders.style.setProperty("--row-height", `${metrics.rowHeight}px`);
+  for (const card of folders.children) {
+    updateFolderScrollShadow(card.querySelector(".folder-content"));
+  }
   updateDropIndicator();
+}
+
+function updateFolderScrollShadow(content) {
+  const maxScroll = Math.max(0, content.scrollHeight - content.clientHeight);
+  const scrollTop = Math.max(0, Math.min(content.scrollTop, maxScroll));
+  function strength(distance) {
+    // Ignore rounding at the limit, then ease smoothly to full strength.
+    const progress = Math.min(1, Math.max(0, distance - 1) / SCROLL_SHADOW_FADE_DISTANCE);
+    return progress * progress * (3 - 2 * progress);
+  }
+  content.parentElement.style.setProperty("--top-shadow-opacity", strength(scrollTop));
+  content.parentElement.style.setProperty("--bottom-shadow-opacity", strength(maxScroll - scrollTop));
 }
 
 function closeBookmarkMenu(restoreFocus = false) {
@@ -322,7 +338,9 @@ function render(tree) {
   }
   updateLayout();
   for (const card of folders.children) {
-    card.querySelector(".folder-content").scrollTop = scrollPositions.get(card.dataset.folderId) ?? 0;
+    const content = card.querySelector(".folder-content");
+    content.scrollTop = scrollPositions.get(card.dataset.folderId) ?? 0;
+    updateFolderScrollShadow(content);
   }
   rearrangement.play(previousPositions);
   if (focusedId) {
@@ -422,7 +440,12 @@ for (const event of [browser.bookmarks.onCreated, browser.bookmarks.onChanged,
 }
 
 window.addEventListener("resize", updateLayout);
-document.addEventListener("scroll", updateDropIndicator, true);
+document.addEventListener("scroll", event => {
+  if (event.target.matches?.(".folder-card > .folder-content")) {
+    updateFolderScrollShadow(event.target);
+  }
+  updateDropIndicator();
+}, true);
 const observer = new ResizeObserver(updateLayout);
 observer.observe(unfoldered);
 observer.observe(status);
