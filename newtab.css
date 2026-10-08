@@ -143,6 +143,10 @@ button {
   transition: background-color 150ms ease;
 }
 
+.folder-content > .bookmark + .bookmark {
+  margin-top: 4px;
+}
+
 body:not(.bookmark-menu-open)
   .bookmark:is(:hover, :has(.item-name:focus-visible)),
 body:not(.bookmark-menu-open)
@@ -232,6 +236,9 @@ body:not(.bookmark-menu-open) .bookmark:hover > a.item-name,
 }
 
 .bookmark-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   position: fixed;
   z-index: 10;
   min-width: 140px;
@@ -272,83 +279,6 @@ body:not(.bookmark-menu-open) .bookmark:hover > a.item-name,
   color: var(--text);
   background: var(--canvas);
   caret-color: var(--text);
-}
-
-#bookmark-editor {
-  width: min(440px, calc(100vw - 32px));
-  max-height: calc(100vh - 32px);
-  padding: 20px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  color: var(--text);
-  background: var(--surface);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
-}
-
-#bookmark-editor::backdrop {
-  background: rgb(0 0 0 / 55%);
-}
-
-#bookmark-editor h2 {
-  margin: 0 0 18px;
-  font-size: 16px;
-}
-
-#bookmark-editor .creation-title {
-  color: #999999;
-  overflow-wrap: anywhere;
-}
-
-#bookmark-editor .destination-name {
-  color: #ffffff;
-}
-
-#bookmark-edit-fields {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-#bookmark-edit-fields input {
-  width: 100%;
-  min-width: 0;
-  margin-bottom: 8px;
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  color: var(--text);
-  background: var(--canvas);
-}
-
-#bookmark-edit-error {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.editor-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.editor-actions button {
-  padding: 7px 14px;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  background: var(--header);
-  cursor: pointer;
-}
-
-.editor-actions button:hover {
-  background: var(--surface-hover);
-}
-
-#bookmark-edit-fields:disabled {
-  opacity: 0.6;
 }
 
 ::selection {

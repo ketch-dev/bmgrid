@@ -4,6 +4,21 @@
   "version": "1.0.0",
   "description": "A minimal new-tab grid for Firefox's Other Bookmarks.",
   "permissions": ["bookmarks", "storage", "tabs"],
+  "icons": {
+    "16": "extension-icon.svg",
+    "32": "extension-icon.svg",
+    "48": "extension-icon.svg",
+    "96": "extension-icon.svg"
+  },
+  "action": {
+    "default_title": "Bookmark Grid",
+    "default_icon": "toolbar-icon.svg",
+    "default_popup": "popup.html",
+    "theme_icons": [
+      { "light": "toolbar-icon.svg", "dark": "toolbar-icon.svg", "size": 16 },
+      { "light": "toolbar-icon.svg", "dark": "toolbar-icon.svg", "size": 32 }
+    ]
+  },
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },

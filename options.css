@@ -3,6 +3,7 @@
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 14px;
   --canvas: #101010;
+  --header: #191919;
   --surface: #151515;
   --surface-hover: #242424;
   --border: #222222;
@@ -12,22 +13,96 @@
   background: var(--canvas);
 }
 
-* { box-sizing: border-box; }
-body { margin: 0; }
-main { padding: 16px; }
+* {
+  box-sizing: border-box;
+}
+[hidden] {
+  display: none !important;
+}
+body {
+  margin: 0;
+}
+main {
+  padding: 16px;
+}
+button,
+input {
+  font: inherit;
+}
+button {
+  color: inherit;
+}
 
-#download-log {
-  padding: 7px 12px;
+#extension-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 260px;
+  max-width: 100%;
+  padding: 4px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  color: inherit;
   background: var(--surface);
-  font: inherit;
+}
+
+.action-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  text-align: left;
   cursor: pointer;
 }
 
-#download-log:hover { background: var(--surface-hover); }
-:focus-visible { outline: 2px solid var(--indicator); outline-offset: 2px; }
+.action-button svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.action-button:hover,
+.action-button:focus-visible {
+  background: var(--surface-hover);
+}
+.action-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.action-button:focus-visible {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid var(--indicator);
+  outline-offset: 2px;
+}
+
+.toolbar-popup {
+  width: 276px;
+}
+.toolbar-popup main {
+  padding: 8px;
+}
+.toolbar-popup #extension-actions {
+  border: 0;
+}
+.toolbar-popup:has(#bookmark-editor:not([hidden])) {
+  width: 360px;
+}
+.toolbar-popup #bookmark-editor {
+  width: 100%;
+  max-height: none;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+/* Firefox sizes embedded Preferences from the page, excluding modal dialogs. */
+body:not(.toolbar-popup):has(#bookmark-editor[open]) main {
+  min-height: 400px;
+}
+
 #status {
   margin: 12px 0 0;
   padding: 10px 14px;
@@ -36,4 +111,10 @@ main { padding: 16px; }
   color: var(--text);
   background: var(--surface);
   font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+::selection {
+  color: #ffffff;
+  background: #555555;
 }

@@ -17,6 +17,7 @@
 - Observe bookmark events so changes made in Firefox's native UI appear in the grid.
 
 ## Layout
+- Keep at least 4px between independently highlightable sibling items: toolbar/Preferences actions, grid context-menu actions, and bookmark rows inside folders. Preserve larger existing gaps.
 - Fit up to six columns, each at least 400px wide, accounting for padding and gaps.
 - Fit up to two rows in the available height, each at least 400px tall; account for the unfoldered area.
 - Additional folder rows use vertical page scrolling. Long folder contents scroll inside their cards.
@@ -44,6 +45,8 @@
 - Preserve exact URLs and duplicate bookmarks; normalize line breaks in names to keep each bookmark on one line.
 - Keep log entries after undo. Preserve legacy entries without inventing missing bookmark names.
 - Export UTF-8 `deletion-log.txt` from the embedded Firefox Preferences page in `about:addons`.
+- The toolbar popup and embedded Preferences share three actions: Add Bookmark (plus icon), Open Grid (outline bookmark icon), and Download Deletion Log (download icon). Toolbar creation prefills the active tab's name and URL; Preferences creation starts empty. Both append to Other Bookmarks using the compact editor. Open Grid opens a new tab.
+- Use the same outline bookmark ribbon everywhere. Reserve Firefox dark-theme text color (`#fbfbfe`) exclusively for the toolbar button. Tab favicons and Add-ons Manager branding use `#cccccc`; popup and Preferences action icons inherit `currentColor` so all actions match.
 
 ## Code map
 - `manifest.json`: permissions, new-tab override, background module, and embedded Preferences registration.
@@ -55,7 +58,11 @@
 - `layout.js`: column and row sizing calculations.
 - `drag-drop.js`: bookmark and folder drop targeting, measured insertion-gap and indicator geometry, and cycle prevention.
 - `rearrangement.js`: captures item positions, animates grid rearrangements and cross-folder moves, and cleans up interrupted animations. Rearrangement animations intentionally remain enabled regardless of `prefers-reduced-motion`, per user preference.
-- `options.html`, `options.css`, `options.js`: Preferences UI and log download.
+- `popup.html`, `options.html`, `options.css`, `options.js`: shared toolbar/Preferences actions and log download.
+- `icons.js`: shared action icons inheriting the surrounding text color.
+- `toolbar-icon.svg`: bright outline bookmark branding exclusively for the toolbar button.
+- `extension-icon.svg`: dimmer outline bookmark branding for the Add-ons Manager and extension-owned tab favicons.
+- `bookmark-editor.js`, `bookmark-editor.css`: shared compact bookmark/folder creation and bookmark editing UI.
 - `tests/`: Node tests and the fake bookmarks API.
 
 ## Verification

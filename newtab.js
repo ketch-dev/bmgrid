@@ -3,6 +3,8 @@ import { createIconProvider } from "./bookmark-icons.js";
 import { dropIntent, dropLineBox } from "./drag-drop.js";
 import { gridMetrics } from "./layout.js";
 import { createRearrangement } from "./rearrangement.js";
+import { icon } from "./icons.js";
+import { createBookmarkEditor } from "./bookmark-editor.js";
 
 const unfoldered = document.querySelector("#unfoldered");
 const direct = document.querySelector("#direct-bookmarks");
@@ -11,14 +13,6 @@ const status = document.querySelector("#status");
 const bookmarkMenu = document.querySelector("#bookmark-menu");
 const editMenuLabel = bookmarkMenu.querySelector('[data-action="edit"] span');
 const bookmarkEditor = document.querySelector("#bookmark-editor");
-const editorTitle = document.querySelector("#bookmark-editor-title");
-const editorSubmit = document.querySelector("#bookmark-edit-submit");
-const editForm = document.querySelector("#bookmark-edit-form");
-const editFields = document.querySelector("#bookmark-edit-fields");
-const editName = document.querySelector("#bookmark-edit-name");
-const editUrl = document.querySelector("#bookmark-edit-url");
-const editUrlLabel = document.querySelector("#bookmark-edit-url-label");
-const editError = document.querySelector("#bookmark-edit-error");
 const dropLine = document.querySelector("#drop-line");
 const rearrangement = createRearrangement(document.querySelector("#page"));
 const DRAG_TYPE = "application/x-bmgrid-bookmark";
@@ -31,10 +25,14 @@ let pendingRefresh = false;
 let refreshTimer;
 let refreshVersion = 0;
 let menuTarget = null;
-let editTarget = null;
 let activeDrop = null;
 const icons = createIconProvider(browser, updateBookmarkIcons);
 icons.ready.catch(error => { console.error("Bookmark Grid icons:", error); });
+const editor = createBookmarkEditor(bookmarkEditor, request, target => {
+  editing = null;
+  if (target?.row?.isConnected) target.row.querySelector(".item-name").focus();
+  scheduleRefresh();
+});
 
 async function request(action, details = {}) {
   const response = await browser.runtime.sendMessage({ scope: "bmgrid", action, ...details });
@@ -67,26 +65,6 @@ function updateLayout() {
   folders.style.setProperty("--columns", metrics.columns);
   folders.style.setProperty("--row-height", `${metrics.rowHeight}px`);
   updateDropIndicator();
-}
-
-function icon(kind) {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 16 16");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", "1.5");
-  svg.setAttribute("stroke-linecap", "round");
-  svg.setAttribute("stroke-linejoin", "round");
-  svg.setAttribute("aria-hidden", "true");
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  const paths = {
-    pen: "M3 10.5 10.5 3l2.5 2.5L5.5 13 2 14l1-3.5ZM9 4.5 11.5 7",
-    trash: "M2.5 4.5h11M6 4.5V2h4v2.5M4 4.5l.75 9h6.5l.75-9M6.5 7v4M9.5 7v4",
-    plus: "M8 3v10M3 8h10",
-  };
-  path.setAttribute("d", paths[kind]);
-  svg.append(path);
-  return svg;
 }
 
 function closeBookmarkMenu(restoreFocus = false) {
@@ -168,107 +146,14 @@ function startBookmarkEdit(node, row) {
 
 function startEditor(target) {
   if (editing) return;
-  editTarget = target;
   editing = bookmarkEditor;
-  const adding = target.mode === "add";
-  const isBookmark = target.type === "bookmark";
-  editorTitle.textContent = adding ? isBookmark ? "Add Bookmark" : "Add Folder" : "Edit Bookmark";
-  editorTitle.classList.toggle("creation-title", adding);
-  if (adding) {
+  if (target.mode === "add") {
     const parentId = target.destination.parentId ?? nodes.get(target.destination.afterId)?.parentId;
     const folder = parentId === OTHER_BOOKMARKS_ID ? null : nodes.get(parentId);
-    if (folder) {
-      const name = document.createElement("span");
-      name.className = "destination-name";
-      name.textContent = folder.title || "Untitled";
-      editorTitle.append(" to ", name);
-    }
+    if (folder) target.destinationName = folder.title || "Untitled";
   }
-  editorSubmit.textContent = adding ? "Add" : "Save";
-  editName.value = adding ? "" : target.node.title;
-  editUrl.value = adding ? "" : target.node.url;
-  editUrl.hidden = editUrlLabel.hidden = !isBookmark;
-  editError.hidden = true;
-  editFields.disabled = false;
-  bookmarkEditor.showModal();
-  editName.focus();
-  editName.select();
+  editor.open(target);
 }
-
-function cancelEdit() {
-  if (!editFields.disabled) bookmarkEditor.close();
-}
-
-document.querySelector("#bookmark-edit-cancel").addEventListener("click", cancelEdit);
-bookmarkEditor.addEventListener("cancel", event => {
-  event.preventDefault();
-  cancelEdit();
-});
-bookmarkEditor.addEventListener("close", () => {
-  const row = editTarget?.row;
-  editTarget = null;
-  editing = null;
-  if (row?.isConnected) row.querySelector(".item-name").focus();
-  scheduleRefresh();
-});
-bookmarkEditor.addEventListener("keydown", event => {
-  if (event.key !== "Tab") return;
-  const controls = [...editFields.querySelectorAll("input, button")]
-    .filter(control => !control.matches(":disabled") && !control.hidden);
-  if (!controls.length) {
-    event.preventDefault();
-    return;
-  }
-  const first = controls[0];
-  const last = controls.at(-1);
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault();
-    last.focus();
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault();
-    first.focus();
-  }
-});
-
-function outsideEditor(event) {
-  const box = bookmarkEditor.getBoundingClientRect();
-  return event.target === bookmarkEditor && (event.clientX < box.left || event.clientX > box.right
-    || event.clientY < box.top || event.clientY > box.bottom);
-}
-
-let editorBackdropPressed = false;
-bookmarkEditor.addEventListener("pointerdown", event => {
-  editorBackdropPressed = outsideEditor(event);
-});
-bookmarkEditor.addEventListener("click", event => {
-  if (editorBackdropPressed && outsideEditor(event)) cancelEdit();
-  editorBackdropPressed = false;
-});
-
-editForm.addEventListener("submit", async event => {
-  event.preventDefault();
-  if (!editTarget || editFields.disabled) return;
-  const { node, mode, type, destination } = editTarget;
-  editError.hidden = true;
-  editFields.disabled = true;
-  try {
-    if (mode === "add") {
-      await request("add", { ...destination, type, title: editName.value,
-        ...(type === "bookmark" ? { url: editUrl.value } : {}) });
-    } else {
-      const changes = {};
-      if (editName.value !== node.title) changes.title = editName.value;
-      if (editUrl.value !== node.url) changes.url = editUrl.value;
-      if (Object.keys(changes).length) await request("edit", { id: node.id, ...changes });
-    }
-    bookmarkEditor.close();
-  } catch (error) {
-    editError.textContent = error.message ?? String(error);
-    editError.hidden = false;
-    editFields.disabled = false;
-    (type === "bookmark" ? editUrl : editName).focus();
-  }
-});
 
 function startFolderRename(node, container) {
   if (editing) return;
