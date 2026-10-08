@@ -58,7 +58,7 @@ button {
 #direct-bookmarks > .bookmark {
   min-width: 64px;
   max-width: 400px;
-  padding: 5px 10px;
+  padding: 3px 10px;
   border: 1px solid var(--border);
   border-radius: 9px;
   background: var(--surface);
@@ -116,12 +116,16 @@ button {
 }
 
 .folder-heading {
+  display: flex;
+  align-items: center;
+  flex: none;
   position: relative;
   z-index: 1;
   background: var(--header);
   border-radius: 16px 16px 0 0;
   margin: 0;
-  padding: 8px 12px;
+  height: 38px;
+  padding: 0 12px;
   border-bottom: 1px solid var(--border);
   font-size: 15px;
   font-weight: 600;
@@ -152,6 +156,12 @@ button {
   margin-bottom: 0;
 }
 
+.nested-folder > .folder-heading {
+  height: 32px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
 .nested-folder > .folder-content {
   flex: none;
   min-height: 24px;
@@ -162,7 +172,7 @@ button {
   position: relative;
   isolation: isolate;
   min-width: 0;
-  padding: 6px 8px;
+  padding: 4px 8px;
   border-radius: 8px;
   transition: background-color 150ms ease;
 }
