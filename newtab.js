@@ -3,7 +3,6 @@ import { createIconProvider } from "./bookmark-icons.js";
 import { dropIntent, dropLineBox } from "./drag-drop.js";
 import { gridMetrics } from "./layout.js";
 import { createRearrangement } from "./rearrangement.js";
-import { createDragScroller } from "./drag-scroll.js";
 
 const unfoldered = document.querySelector("#unfoldered");
 const direct = document.querySelector("#direct-bookmarks");
@@ -18,7 +17,6 @@ let nodes = new Map();
 let folderCount = 0;
 let editing = null;
 let dragging = null;
-let dragPoint = null;
 let pendingRefresh = false;
 let refreshTimer;
 let refreshVersion = 0;
@@ -57,7 +55,7 @@ function updateLayout() {
   const metrics = gridMetrics(folders.clientWidth, height, folderCount, gap);
   folders.style.setProperty("--columns", metrics.columns);
   folders.style.setProperty("--row-height", `${metrics.rowHeight}px`);
-  refreshDragTarget();
+  updateDropIndicator();
 }
 
 function icon(kind) {
@@ -204,12 +202,17 @@ function makeDraggable(element, node) {
     event.stopPropagation();
     closeBookmarkMenu();
     rearrangement.finish();
-    dragging = { id: node.id, element };
+    dragging = node.id;
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData(DRAG_TYPE, node.id);
     element.dataset.dragging = "true";
   });
-  element.addEventListener("dragend", finishDrag);
+  element.addEventListener("dragend", () => {
+    dragging = null;
+    delete element.dataset.dragging;
+    clearDropIndicator();
+    if (pendingRefresh) scheduleRefresh();
+  });
 }
 
 function renderBookmark(node) {
@@ -344,64 +347,34 @@ function updateDropIndicator() {
   });
 }
 
-function refreshDragTarget() {
-  if (!dragging || !dragPoint) return;
-  const target = document.elementFromPoint(dragPoint.clientX, dragPoint.clientY);
-  const intent = target ? dropIntent({ ...dragPoint, target }, dragging.id, nodes) : null;
+document.addEventListener("dragover", event => {
+  if (!event.dataTransfer.types.includes(DRAG_TYPE)) return;
+  const intent = dropIntent(event, dragging, nodes);
   clearDropIndicator();
   if (intent) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
     intent.element.dataset.drop = intent.indicator;
     activeDrop = intent;
     updateDropIndicator();
   }
-}
-
-const dragScroller = createDragScroller(document, refreshDragTarget);
-
-function pauseDrag() {
-  dragPoint = null;
-  dragScroller.stop();
-  clearDropIndicator();
-}
-
-function finishDrag() {
-  if (dragging) delete dragging.element.dataset.dragging;
-  dragging = null;
-  pauseDrag();
-  if (pendingRefresh) scheduleRefresh();
-}
-
-document.addEventListener("dragover", event => {
-  if (!dragging || !event.dataTransfer.types.includes(DRAG_TYPE)) return;
-  dragPoint = { clientX: event.clientX, clientY: event.clientY };
-  dragScroller.update(dragPoint);
-  refreshDragTarget();
-  if (activeDrop) {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-  }
 });
 
 document.addEventListener("dragleave", event => {
-  if (!event.relatedTarget) pauseDrag();
+  if (!event.relatedTarget) clearDropIndicator();
 });
 
 document.addEventListener("drop", event => {
-  if (!dragging || !event.dataTransfer.types.includes(DRAG_TYPE)) return;
+  const sourceId = event.dataTransfer.getData(DRAG_TYPE);
+  const intent = dropIntent(event, sourceId, nodes);
+  if (!intent) return;
   event.preventDefault();
-  const id = dragging.id;
-  const intent = dropIntent(event, id, nodes);
-  finishDrag();
-  if (intent) perform("move", { id, destination: intent.destination });
+  clearDropIndicator();
+  dragging = null;
+  perform("move", { id: sourceId, destination: intent.destination });
 });
 
-window.addEventListener("blur", finishDrag);
-
 document.addEventListener("keydown", event => {
-  if (event.key === "Escape" && dragging) {
-    finishDrag();
-    return;
-  }
   if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
     openBookmarkMenu(event);
     return;
@@ -425,7 +398,7 @@ for (const event of [browser.bookmarks.onCreated, browser.bookmarks.onChanged,
 }
 
 window.addEventListener("resize", updateLayout);
-document.addEventListener("scroll", refreshDragTarget, true);
+document.addEventListener("scroll", updateDropIndicator, true);
 const observer = new ResizeObserver(updateLayout);
 observer.observe(unfoldered);
 observer.observe(status);
