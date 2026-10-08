@@ -10,7 +10,6 @@ const folders = document.querySelector("#folders");
 const status = document.querySelector("#status");
 const bookmarkMenu = document.querySelector("#bookmark-menu");
 const editMenuLabel = bookmarkMenu.querySelector('[data-action="edit"] span');
-const addFolderMenuButton = bookmarkMenu.querySelector('[data-action="add-folder"]');
 const bookmarkEditor = document.querySelector("#bookmark-editor");
 const editorTitle = document.querySelector("#bookmark-editor-title");
 const editorSubmit = document.querySelector("#bookmark-edit-submit");
@@ -100,7 +99,9 @@ function closeBookmarkMenu(restoreFocus = false) {
 }
 
 function openBookmarkMenu(event) {
-  const row = event.target.closest(".bookmark, .folder-heading");
+  const itemRow = event.target.closest(".bookmark, .folder-heading");
+  const folder = event.target.closest(".folder-card, .nested-folder");
+  const row = itemRow ?? folder?.querySelector(".folder-heading");
   const background = [document.documentElement, document.body, document.querySelector("#page"),
     unfoldered, direct, folders].includes(event.target);
   if ((!row && !background) || editing || dragging) return;
@@ -111,9 +112,11 @@ function openBookmarkMenu(event) {
   const isBookmark = node && nodeType(node) === "bookmark";
   menuTarget = { node, row: container };
   editMenuLabel.textContent = isBookmark ? "Edit" : "Rename";
-  addFolderMenuButton.hidden = Boolean(isBookmark);
+  for (const button of bookmarkMenu.querySelectorAll('[data-action^="add-"]')) {
+    button.hidden = Boolean(isBookmark);
+  }
   for (const action of ["edit", "delete"]) {
-    bookmarkMenu.querySelector(`[data-action="${action}"]`).hidden = !node;
+    bookmarkMenu.querySelector(`[data-action="${action}"]`).hidden = !node || !itemRow;
   }
   bookmarkMenu.hidden = false;
   document.body.classList.add("bookmark-menu-open");
@@ -124,7 +127,7 @@ function openBookmarkMenu(event) {
   const y = keyboard ? box.bottom : event.clientY;
   bookmarkMenu.style.left = `${Math.max(8, Math.min(x, window.innerWidth - bookmarkMenu.offsetWidth - 8))}px`;
   bookmarkMenu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - bookmarkMenu.offsetHeight - 8))}px`;
-  bookmarkMenu.firstElementChild.focus();
+  bookmarkMenu.querySelector("button:not([hidden])").focus();
 }
 
 for (const button of bookmarkMenu.children) {
@@ -138,9 +141,7 @@ bookmarkMenu.addEventListener("click", event => {
   closeBookmarkMenu(action === "delete");
   if (action === "add-bookmark" || action === "add-folder") {
     const type = action === "add-bookmark" ? "bookmark" : "folder";
-    const destination = !node ? { parentId: OTHER_BOOKMARKS_ID }
-      : nodeType(node) === "folder" ? { parentId: node.id }
-        : { afterId: node.id };
+    const destination = { parentId: node?.id ?? OTHER_BOOKMARKS_ID };
     startEditor({ mode: "add", type, destination, row });
   } else if (action === "edit") {
     if (nodeType(node) === "bookmark") startBookmarkEdit(node, row);
