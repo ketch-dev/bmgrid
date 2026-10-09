@@ -16,8 +16,7 @@ main {
   padding: 16px;
 }
 button,
-input,
-select {
+input {
   font: inherit;
 }
 button {
@@ -38,15 +37,44 @@ button {
   margin-bottom: 12px;
 }
 #theme-choice {
+  display: flex;
+  gap: 4px;
+}
+.theme-option {
+  position: relative;
+  cursor: pointer;
+}
+.theme-option input {
+  /* Keep native radio focus and arrow-key behavior without a popup window. */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+}
+.theme-option span {
+  display: block;
+  min-width: 60px;
   padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: 5px;
-  color: var(--text);
+  color: var(--muted);
   background: var(--surface);
-  cursor: pointer;
+  text-align: center;
 }
-#theme-choice:hover {
+.theme-option:hover span {
+  color: var(--text);
   background: var(--surface-hover);
+}
+.theme-option input:checked + span {
+  border-color: var(--indicator);
+  color: var(--text);
+  background: var(--surface-hover);
+}
+.theme-option input:focus-visible + span {
+  outline: 2px solid var(--indicator);
+  outline-offset: 2px;
 }
 
 #theme-colors {

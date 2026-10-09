@@ -3,8 +3,11 @@ import { THEME_COLORS, normalizeHex, colorCss } from "./theme-colors.js";
 
 export function createThemeSettings(settings, colors, showError) {
   settings.innerHTML = `<div class="theme-setting">
-    <label for="theme-choice">Theme</label>
-    <select id="theme-choice"><option value="dark">Dark</option><option value="light">Light</option></select>
+    <span id="theme-label">Theme</span>
+    <div id="theme-choice" role="radiogroup" aria-labelledby="theme-label">
+      <label class="theme-option"><input type="radio" name="theme" value="dark"><span>Dark</span></label>
+      <label class="theme-option"><input type="radio" name="theme" value="light"><span>Light</span></label>
+    </div>
   </div>`;
   colors.innerHTML = `<h2><label id="theme-colors-title" class="override-colors-label" for="override-colors">
     <input id="override-colors" class="color-override" type="checkbox" aria-controls="color-overrides-details">
@@ -16,6 +19,7 @@ export function createThemeSettings(settings, colors, showError) {
         Shadow opacity is preserved.</p>
     </div>`;
   const selector = settings.querySelector("#theme-choice");
+  const themeChoices = [...selector.querySelectorAll('input[type="radio"]')];
   const master = colors.querySelector("#override-colors");
   const details = colors.querySelector("#color-overrides-details");
   const description = colors.querySelector("#theme-colors-description");
@@ -27,14 +31,15 @@ export function createThemeSettings(settings, colors, showError) {
   let masterSave = Promise.resolve();
   let colorSave = Promise.resolve();
 
-  selector.addEventListener("change", () => {
-    const selected = selector.value;
+  selector.addEventListener("change", event => {
+    if (!themeChoices.includes(event.target) || !event.target.checked) return;
+    const selected = event.target.value;
     // Keep keyboard focus while serializing rapid selections.
     themeSave = themeSave.then(() => {
       showError();
       return theme.set(selected);
     }).catch(error => {
-      selector.value = theme.value;
+      render();
       showError(`Unable to save theme: ${error.message ?? String(error)}`);
     });
   });
@@ -150,7 +155,7 @@ export function createThemeSettings(settings, colors, showError) {
   function render() {
     rendering = true;
     const mode = theme.value;
-    selector.value = mode;
+    for (const choice of themeChoices) choice.checked = choice.value === mode;
     const enabled = overrides.isEnabled(mode);
     const hidingFocus = !enabled && details.contains(document.activeElement);
     master.checked = enabled;
