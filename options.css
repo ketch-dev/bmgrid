@@ -1,16 +1,6 @@
 :root {
-  color-scheme: dark;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 14px;
-  --canvas: #101010;
-  --header: #191919;
-  --surface: #151515;
-  --surface-hover: #242424;
-  --border: #222222;
-  --text: #cccccc;
-  --indicator: #bbbbbb;
-  color: var(--text);
-  background: var(--canvas);
 }
 
 * {
@@ -26,13 +16,34 @@ main {
   padding: 16px;
 }
 button,
-input {
+input,
+select {
   font: inherit;
 }
 button {
   color: inherit;
 }
 
+.theme-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 260px;
+  max-width: 100%;
+  margin-bottom: 12px;
+}
+#theme-choice {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  background: var(--surface);
+  cursor: pointer;
+}
+#theme-choice:hover {
+  background: var(--surface-hover);
+}
 #extension-actions {
   display: flex;
   flex-direction: column;
@@ -112,9 +123,4 @@ body:not(.toolbar-popup):has(#bookmark-editor[open]) main {
   background: var(--surface);
   font-size: 12px;
   overflow-wrap: anywhere;
-}
-
-::selection {
-  color: #ffffff;
-  background: #555555;
 }

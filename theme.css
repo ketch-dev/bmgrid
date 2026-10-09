@@ -1,0 +1,61 @@
+:root {
+  color-scheme: dark;
+  --canvas: #101010;
+  --header: #191919;
+  --surface: #151515;
+  --surface-hover: #242424;
+  --border: #222222;
+  --text: #cccccc;
+  --link: #bbbbbb;
+  --muted: #999999;
+  --destination: #ffffff;
+  --focus: #444444;
+  --indicator: #bbbbbb;
+  --drop-indicator: #999999;
+  --scrollbar: #444444;
+  --selection-text: #ffffff;
+  --selection-background: #555555;
+  --card-shadow: rgb(0 0 0 / 14%);
+  --popup-shadow: rgb(0 0 0 / 35%);
+  --backdrop: rgb(0 0 0 / 55%);
+  --scroll-shadow-stops: rgb(0 0 0 / 40%) 0%, rgb(0 0 0 / 24%) 20%,
+    rgb(0 0 0 / 10%) 45%, rgb(0 0 0 / 3%) 70%,
+    rgb(0 0 0 / 0.5%) 90%, rgb(0 0 0 / 0%) 100%;
+  color: var(--text);
+  background: var(--canvas);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --canvas: #e6e6e6;
+  --header: #dedede;
+  --surface: #f2f2f2;
+  --surface-hover: #d5d5d5;
+  --border: #c4c4c4;
+  --text: #303030;
+  --link: #424242;
+  --muted: #616161;
+  --destination: #202020;
+  --focus: #707070;
+  --indicator: #616161;
+  --drop-indicator: #616161;
+  --scrollbar: #999999;
+  --selection-text: #f2f2f2;
+  --selection-background: #555555;
+  --card-shadow: rgb(0 0 0 / 8%);
+  --popup-shadow: rgb(0 0 0 / 16%);
+  --backdrop: rgb(0 0 0 / 25%);
+  --scroll-shadow-stops: rgb(0 0 0 / 20%) 0%, rgb(0 0 0 / 12%) 20%,
+    rgb(0 0 0 / 5%) 45%, rgb(0 0 0 / 1.5%) 70%,
+    rgb(0 0 0 / 0.25%) 90%, rgb(0 0 0 / 0%) 100%;
+}
+
+/* Reveal content in its saved theme rather than repainting a dark interface. */
+:root:not([data-theme]) body {
+  visibility: hidden;
+}
+
+::selection {
+  color: var(--selection-text);
+  background: var(--selection-background);
+}

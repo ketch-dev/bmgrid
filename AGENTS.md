@@ -17,6 +17,7 @@
 - Observe bookmark events so changes made in Firefox's native UI appear in the grid.
 
 ## Layout
+- Offer Dark and Light themes in embedded Preferences; persist the selection in `storage.local` and update all open extension pages. Default to Dark. Keep Light grayscale with soft gray surfaces, never pure-white backgrounds.
 - Keep at least 4px between independently highlightable sibling items: toolbar/Preferences actions, grid context-menu actions, and bookmark rows inside folders. Preserve larger existing gaps.
 - Fit up to six columns, each at least 400px wide, accounting for padding and gaps.
 - Fit up to two rows in the available height, each at least 400px tall; account for the unfoldered area.
@@ -25,7 +26,7 @@
 
 ## Interactions
 - Right-click a bookmark or folder heading to show a small popup with the pen icon and Edit text for bookmarks or Rename text for folders, and the trash-bin icon and Delete text; each action uses a single click. Support the context-menu key and Shift+F10 as well, with keyboard-focusable folder names.
-- Bookmark-row popups offer only Edit and Delete. Folder-heading popups put plus-icon Add Bookmark and Add Folder actions first, followed by Rename and Delete. Empty folder areas, including content padding and gaps between items, offer only Add Bookmark and Add Folder; target the innermost folder containing the clicked space. Creation actions from headings or empty folder areas append inside that folder. Grid gaps and the unfoldered/canvas background offer both creation actions, appending to Other Bookmarks. Focus the first visible popup action when opening. Use the compact bookmark modal for creation, with Name and URL for bookmarks and Name only for folders; preserve drafts on failure and defer refresh while open. Creation headings show "Add Bookmark to {FOLDER_NAME}" or "Add Folder to {FOLDER_NAME}", with the destination name white and surrounding text dimmed; additions to Other Bookmarks show only "Add Bookmark" or "Add Folder" in dimmed text.
+- Bookmark-row popups offer only Edit and Delete. Folder-heading popups put plus-icon Add Bookmark and Add Folder actions first, followed by Rename and Delete. Empty folder areas, including content padding and gaps between items, offer only Add Bookmark and Add Folder; target the innermost folder containing the clicked space. Creation actions from headings or empty folder areas append inside that folder. Grid gaps and the unfoldered/canvas background offer both creation actions, appending to Other Bookmarks. Focus the first visible popup action when opening. Use the compact bookmark modal for creation, with Name and URL for bookmarks and Name only for folders; preserve drafts on failure and defer refresh while open. Creation headings show "Add Bookmark to {FOLDER_NAME}" or "Add Folder to {FOLDER_NAME}", with the destination name white in Dark or dark in Light and surrounding text dimmed; additions to Other Bookmarks show only "Add Bookmark" or "Add Folder" in dimmed text.
 - Delete immediately and without confirmation; deleting a folder removes its descendants. Dismiss the action popup after an action, outside click, Escape, scrolling, resizing, or refresh.
 - Left-click a bookmark to open it in the current tab; middle-click opens a new tab.
 - Bookmark Edit opens a compact modal with Name and URL fields. Save or Enter updates changed fields in the native bookmark; Cancel, Escape, or clicking outside cancels. Retain input and show errors when saving fails. Defer grid refresh while editing, preserve text undo, and restore bookmark focus after closing.
@@ -59,6 +60,7 @@
 - `drag-drop.js`: bookmark and folder drop targeting, measured insertion-gap and indicator geometry, and cycle prevention.
 - `rearrangement.js`: captures item positions, animates grid rearrangements and cross-folder moves, and cleans up interrupted animations. Rearrangement animations intentionally remain enabled regardless of `prefers-reduced-motion`, per user preference.
 - `popup.html`, `options.html`, `options.css`, `options.js`: shared toolbar/Preferences actions and log download.
+- `theme.css`, `theme.js`, `theme-page.js`: shared palettes, persistent theme preference, and live page updates.
 - `icons.js`: shared action icons inheriting the surrounding text color.
 - `toolbar-icon.svg`: bright outline bookmark branding exclusively for the toolbar button.
 - `extension-icon.svg`: dimmer outline bookmark branding for the Add-ons Manager and extension-owned tab favicons.

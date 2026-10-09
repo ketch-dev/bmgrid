@@ -6,13 +6,13 @@
   border-radius: 12px;
   color: var(--text);
   background: var(--surface);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+  box-shadow: 0 8px 24px var(--popup-shadow);
 }
 
-#bookmark-editor::backdrop { background: rgb(0 0 0 / 55%); }
+#bookmark-editor::backdrop { background: var(--backdrop); }
 #bookmark-editor h2 { margin: 0 0 18px; font-size: 16px; }
-#bookmark-editor .creation-title { color: #999999; overflow-wrap: anywhere; }
-#bookmark-editor .destination-name { color: #ffffff; }
+#bookmark-editor .creation-title { color: var(--muted); overflow-wrap: anywhere; }
+#bookmark-editor .destination-name { color: var(--destination); }
 
 #bookmark-edit-fields {
   display: grid;

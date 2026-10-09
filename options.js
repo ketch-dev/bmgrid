@@ -1,3 +1,4 @@
+import { theme } from "./theme-page.js";
 import { OTHER_BOOKMARKS_ID } from "./bookmarks.js";
 import { icon } from "./icons.js";
 import { createBookmarkEditor, createEditorElement } from "./bookmark-editor.js";
@@ -5,6 +6,23 @@ import { createBookmarkEditor, createEditorElement } from "./bookmark-editor.js"
 const popup = document.body.classList.contains("toolbar-popup");
 const actions = document.querySelector("#extension-actions");
 const status = document.querySelector("#status");
+const themeChoice = document.querySelector("#theme-choice");
+if (themeChoice) {
+  themeChoice.value = theme.value;
+  let themeSave = Promise.resolve();
+  themeChoice.addEventListener("change", () => {
+    const selected = themeChoice.value;
+    // Serialize rapid keyboard selections without disabling or blurring the control.
+    themeSave = themeSave.then(async () => {
+      status.hidden = true;
+      await theme.set(selected);
+    }).catch(error => {
+      themeChoice.value = theme.value;
+      status.textContent = `Unable to save theme: ${error.message ?? String(error)}`;
+      status.hidden = false;
+    });
+  });
+}
 const editorElement = createEditorElement(popup);
 document.querySelector("main").append(editorElement);
 const editor = createBookmarkEditor(editorElement, request, (_target, saved) => {
