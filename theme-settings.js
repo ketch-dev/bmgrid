@@ -11,7 +11,7 @@ export function createThemeSettings(settings, colors, showError) {
   </div>`;
   colors.innerHTML = `<h2><label id="theme-colors-title" class="override-colors-label" for="override-colors">
     <input id="override-colors" class="color-override" type="checkbox" aria-controls="color-overrides-details">
-    Override Colors</label></h2>
+    Override Theme Colors</label></h2>
     <div id="color-overrides-details" hidden>
       <p id="theme-colors-description" class="theme-hint"></p>
       <div class="color-list" role="group" aria-labelledby="theme-colors-title"></div>

@@ -32,9 +32,12 @@ button {
 .theme-setting {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
   margin-bottom: 12px;
+}
+#theme-settings {
+  margin-top: 16px;
 }
 #theme-choice {
   display: flex;
@@ -78,7 +81,7 @@ button {
 }
 
 #theme-colors {
-  margin-top: 16px;
+  margin-top: 0;
 }
 #theme-colors h2 {
   margin: 0;
@@ -230,10 +233,13 @@ button {
 }
 
 .toolbar-popup {
-  width: 376px;
+  width: 392px;
 }
 .toolbar-popup main {
-  padding: 8px;
+  padding: 16px;
+}
+.toolbar-popup #color-overrides-details > .theme-hint:last-child {
+  margin-bottom: 0;
 }
 .toolbar-popup:has(#bookmark-editor:not([hidden])) :is(#theme-settings, #theme-colors) {
   display: none;
