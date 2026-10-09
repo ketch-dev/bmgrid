@@ -2,7 +2,7 @@ import "./theme-page.js";
 import { nodeType, OTHER_BOOKMARKS_ID } from "./bookmarks.js";
 import { createIconProvider } from "./bookmark-icons.js";
 import { dropIntent, dropLineBox } from "./drag-drop.js";
-import { gridMetrics } from "./layout.js";
+import { gridColumns } from "./layout.js";
 import { createRearrangement } from "./rearrangement.js";
 import { icon } from "./icons.js";
 import { createBookmarkEditor } from "./bookmark-editor.js";
@@ -20,7 +20,6 @@ const DRAG_TYPE = "application/x-bmgrid-bookmark";
 const SCROLL_SHADOW_FADE_DISTANCE = 16;
 const DEFAULT_FAVICON = browser.runtime.getURL("bookmark.svg");
 let nodes = new Map();
-let folderCount = 0;
 let editing = null;
 let dragging = null;
 let pendingRefresh = false;
@@ -57,15 +56,13 @@ async function perform(action, details) {
   }
 }
 
+function updateGridColumns() {
+  const gap = parseFloat(getComputedStyle(folders).columnGap);
+  folders.style.setProperty("--columns", gridColumns(folders.clientWidth, gap));
+}
+
 function updateLayout() {
-  const pageTop = folders.getBoundingClientRect().top + window.scrollY;
-  const statusHeight = status.hidden ? 0 : status.offsetHeight + 12;
-  const bottomPadding = parseFloat(getComputedStyle(document.querySelector("#page")).paddingBottom);
-  const gap = parseFloat(getComputedStyle(folders).rowGap);
-  const height = window.innerHeight - pageTop - statusHeight - bottomPadding;
-  const metrics = gridMetrics(folders.clientWidth, height, folderCount, gap);
-  folders.style.setProperty("--columns", metrics.columns);
-  folders.style.setProperty("--row-height", `${metrics.rowHeight}px`);
+  updateGridColumns();
   for (const card of folders.children) {
     updateFolderScrollShadow(card.querySelector(".folder-content"));
   }
@@ -328,16 +325,14 @@ function render(tree) {
   index(tree);
   direct.replaceChildren();
   folders.replaceChildren();
-  folderCount = 0;
   for (const node of tree.children ?? []) {
     if (nodeType(node) === "bookmark") direct.append(renderBookmark(node));
     else if (nodeType(node) === "folder") {
-      folderCount++;
       const card = renderFolder(node);
       folders.append(card);
     }
   }
-  updateLayout();
+  updateGridColumns();
   for (const card of folders.children) {
     const content = card.querySelector(".folder-content");
     content.scrollTop = scrollPositions.get(card.dataset.folderId) ?? 0;
@@ -447,7 +442,4 @@ document.addEventListener("scroll", event => {
   }
   updateDropIndicator();
 }, true);
-const observer = new ResizeObserver(updateLayout);
-observer.observe(unfoldered);
-observer.observe(status);
 refresh();

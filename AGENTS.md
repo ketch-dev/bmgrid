@@ -22,9 +22,9 @@
 - Offer matching Dark/Light selectors and color-override controls in embedded Preferences and the toolbar popup. Persist the selection in `storage.local` and update all open extension pages. Default to Dark. Keep the built-in Light palette grayscale with soft gray surfaces, never pure-white backgrounds. Both themes expose the same 19 color roles, one per line, with an override checkbox, native color picker/preview, and hex input. Dim unchecked default rows; disabling an override restores the default but retains its custom color for re-enabling. Preserve shadow opacity and gradient shapes. Store each theme/color override and enabled state independently in `storage.sync` for Mozilla account synchronization; accept incoming sync updates live and retain drafts on validation or save failure.
 - Keep at least 4px between independently highlightable sibling items: toolbar/Preferences actions, grid context-menu actions, and bookmark rows inside folders. Preserve larger existing gaps.
 - Fit up to six columns, each at least 400px wide, accounting for padding and gaps.
-- Fit up to two rows in the available height, each at least 400px tall; account for the unfoldered area.
-- Additional folder rows use vertical page scrolling. Long folder contents scroll inside their cards.
-- Preserve minimum dimensions on small windows rather than shrinking cards below these limits.
+- Size each grid row to its tallest folder's contents, capped at 400px total height including the heading and padding. Stretch shorter folder cards to the same height within their row; different rows may have different heights.
+- Folder rows exceeding the available height use vertical page scrolling. Long folder contents scroll inside their cards.
+- Preserve the 400px minimum card width on small windows.
 
 ## Interactions
 - Right-click a bookmark or folder heading to show a small popup with the pen icon and Edit text for bookmarks or Rename text for folders, and the trash-bin icon and Delete text; each action uses a single click. Support the context-menu key and Shift+F10 as well, with keyboard-focusable folder names.
@@ -58,7 +58,7 @@
 - `bookmark.svg`: generic bookmark favicon fallback.
 - `bookmarks.js`: native bookmark operations, event cache, undo, and persistent deletion logging.
 - `newtab.html`, `newtab.css`, `newtab.js`: grid rendering and interactions.
-- `layout.js`: column and row sizing calculations.
+- `layout.js`: column sizing calculation; CSS controls content-sized row heights.
 - `drag-drop.js`: bookmark and folder drop targeting, measured insertion-gap and indicator geometry, and cycle prevention.
 - `rearrangement.js`: captures item positions, animates grid rearrangements and cross-folder moves, and cleans up interrupted animations. Rearrangement animations intentionally remain enabled regardless of `prefers-reduced-motion`, per user preference.
 - `popup.html`, `options.html`, `options.css`, `options.js`: shared toolbar/Preferences actions and log download.
