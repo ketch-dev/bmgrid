@@ -26,6 +26,6 @@ export function observeTheme(listener) {
 }
 
 await Promise.all([theme.ready, overrides.ready].map(ready =>
-  ready.catch(error => { console.error("Bookmark Grid theme:", error); })));
+  ready.catch(error => { console.error("bmgrid theme:", error); })));
 loaded = true;
 applyTheme();

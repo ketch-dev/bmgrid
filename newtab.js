@@ -28,7 +28,7 @@ let refreshVersion = 0;
 let menuTarget = null;
 let activeDrop = null;
 const icons = createIconProvider(browser, updateBookmarkIcons);
-icons.ready.catch(error => { console.error("Bookmark Grid icons:", error); });
+icons.ready.catch(error => { console.error("bmgrid icons:", error); });
 const editor = createBookmarkEditor(bookmarkEditor, request, target => {
   editing = null;
   if (target?.row?.isConnected) target.row.querySelector(".item-name").focus();

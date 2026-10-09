@@ -115,7 +115,7 @@ export function createBookmarkController(api) {
   function observe(event, operation) {
     event.addListener((...args) => {
       enqueue(() => operation(...args)).catch(error => {
-        console.error("Bookmark Grid:", error);
+        console.error("bmgrid:", error);
       });
     });
   }

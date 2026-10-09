@@ -82,7 +82,7 @@ export function startIconBackground(api) {
   }
 
   function report(error) {
-    console.error("Bookmark Grid favicons:", error);
+    console.error("bmgrid favicons:", error);
   }
 
   function observe(tab) {
