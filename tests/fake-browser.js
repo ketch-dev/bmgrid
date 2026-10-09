@@ -64,6 +64,7 @@ export function createFakeBrowser(tree = fixture()) {
   const api = {
     storage: {
       local: storage(onStorageChanged, "local"),
+      sync: storage(onStorageChanged, "sync"),
       session: storage(onStorageChanged, "session"),
       onChanged: onStorageChanged,
     },

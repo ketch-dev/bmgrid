@@ -17,7 +17,8 @@
 - Observe bookmark events so changes made in Firefox's native UI appear in the grid.
 
 ## Layout
-- Offer Dark and Light themes in embedded Preferences; persist the selection in `storage.local` and update all open extension pages. Default to Dark. Keep Light grayscale with soft gray surfaces, never pure-white backgrounds.
+- Gate the color table and custom palette behind an "Override Colors" master checkbox in both Preferences and the toolbar popup. Remember and synchronize its state separately for Dark and Light; disabling it restores the built-in palette while retaining individual overrides and drafts. New configurations default to unchecked; existing customized palettes without a master setting start checked.
+- Offer matching Dark/Light selectors and color-override controls in embedded Preferences and the toolbar popup. Persist the selection in `storage.local` and update all open extension pages. Default to Dark. Keep the built-in Light palette grayscale with soft gray surfaces, never pure-white backgrounds. Both themes expose the same 19 color roles, one per line, with an override checkbox, native color picker/preview, and hex input. Dim unchecked default rows; disabling an override restores the default but retains its custom color for re-enabling. Preserve shadow opacity and gradient shapes. Store each theme/color override and enabled state independently in `storage.sync` for Mozilla account synchronization; accept incoming sync updates live and retain drafts on validation or save failure.
 - Keep at least 4px between independently highlightable sibling items: toolbar/Preferences actions, grid context-menu actions, and bookmark rows inside folders. Preserve larger existing gaps.
 - Fit up to six columns, each at least 400px wide, accounting for padding and gaps.
 - Fit up to two rows in the available height, each at least 400px tall; account for the unfoldered area.
@@ -60,7 +61,8 @@
 - `drag-drop.js`: bookmark and folder drop targeting, measured insertion-gap and indicator geometry, and cycle prevention.
 - `rearrangement.js`: captures item positions, animates grid rearrangements and cross-folder moves, and cleans up interrupted animations. Rearrangement animations intentionally remain enabled regardless of `prefers-reduced-motion`, per user preference.
 - `popup.html`, `options.html`, `options.css`, `options.js`: shared toolbar/Preferences actions and log download.
-- `theme.css`, `theme.js`, `theme-page.js`: shared palettes, persistent theme preference, and live page updates.
+- `theme.css`, `theme.js`, `theme-page.js`: shared styles, local theme preference, synchronized color overrides, and live page updates.
+- `theme-colors.js`, `theme-settings.js`: built-in palette/role definitions, color validation, and shared Preferences/popup controls.
 - `icons.js`: shared action icons inheriting the surrounding text color.
 - `toolbar-icon.svg`: bright outline bookmark branding exclusively for the toolbar button.
 - `extension-icon.svg`: dimmer outline bookmark branding for the Add-ons Manager and extension-owned tab favicons.

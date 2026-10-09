@@ -24,13 +24,17 @@ button {
   color: inherit;
 }
 
+#theme-settings,
+#theme-colors,
+#extension-actions {
+  width: 360px;
+  max-width: 100%;
+}
 .theme-setting {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  width: 260px;
-  max-width: 100%;
   margin-bottom: 12px;
 }
 #theme-choice {
@@ -44,12 +48,119 @@ button {
 #theme-choice:hover {
   background: var(--surface-hover);
 }
+
+#theme-colors {
+  margin-top: 16px;
+}
+#theme-colors h2 {
+  margin: 0;
+  font-size: 14px;
+}
+.override-colors-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.theme-hint {
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.color-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar) transparent;
+}
+.color-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 28px 82px;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+  border-radius: 5px;
+  font-size: 12px;
+}
+.color-override {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--indicator);
+}
+.color-label {
+  cursor: pointer;
+}
+.color-row[data-overridden="false"] :is(.color-label, .color-hex) {
+  /* Dim default text while keeping the swatch's actual color visible. */
+  color: color-mix(in srgb, var(--text) 35%, var(--surface));
+}
+.color-row[data-overridden="false"] .color-hex {
+  border-color: transparent;
+  background: transparent;
+}
+.color-row[data-overridden="false"]:has(.color-override:focus-visible) .color-label {
+  color: var(--text);
+}
+.color-preview {
+  position: relative;
+  width: 28px;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--canvas);
+}
+.color-preview::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--preview-color);
+  pointer-events: none;
+}
+.color-preview:has(:focus-visible) {
+  outline: 2px solid var(--indicator);
+  outline-offset: 2px;
+}
+.color-picker {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.color-picker:disabled {
+  cursor: default;
+}
+.color-hex {
+  width: 100%;
+  min-width: 0;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  background: var(--canvas);
+  font: 12px monospace;
+}
+.color-error {
+  grid-column: 2 / -1;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 #extension-actions {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  width: 260px;
-  max-width: 100%;
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -91,16 +202,13 @@ button {
 }
 
 .toolbar-popup {
-  width: 276px;
+  width: 376px;
 }
 .toolbar-popup main {
   padding: 8px;
 }
-.toolbar-popup #extension-actions {
-  border: 0;
-}
-.toolbar-popup:has(#bookmark-editor:not([hidden])) {
-  width: 360px;
+.toolbar-popup:has(#bookmark-editor:not([hidden])) :is(#theme-settings, #theme-colors) {
+  display: none;
 }
 .toolbar-popup #bookmark-editor {
   width: 100%;
