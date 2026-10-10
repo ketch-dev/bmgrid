@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "bmgrid",
   "version": "1.0.0",
-  "description": "A minimal new-tab grid for Firefox's Other Bookmarks.",
+  "description": "A new-tab grid for Firefox’s \"Other Bookmarks\", with drag-and-drop organization and customizable themes.",
   "permissions": ["bookmarks", "storage", "tabs"],
   "icons": {
     "16": "extension-icon.svg",
@@ -32,7 +32,7 @@
   },
   "browser_specific_settings": {
     "gecko": {
-      "id": "bmgrid@local",
+      "id": "bmgrid@ketch",
       "strict_min_version": "142.0",
       "data_collection_permissions": {
         "required": ["none"]
