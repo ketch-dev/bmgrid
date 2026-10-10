@@ -63,6 +63,10 @@ export function folderGapGeometry({ previous, next, container, edge }) {
 
 export function dropLineBox(intent) {
   if (!intent || intent.indicator === "inside") return null;
+  if (intent.empty) {
+    const bounds = intent.element.getBoundingClientRect();
+    return { left: bounds.left, top: bounds.top, width: DROP_LINE_WIDTH, height: 32 };
+  }
   const { element, indicator, boundary } = intent;
   let box;
   let viewport;
@@ -74,7 +78,7 @@ export function dropLineBox(intent) {
   } else {
     // Only bookmarks use on-item insertion zones; folders always use gaps.
     const bounds = element.getBoundingClientRect();
-    const vertical = element.parentElement.id === "direct-bookmarks";
+    const vertical = element.parentElement.classList.contains("direct-bookmarks");
     const before = indicator === "before";
     const [start, end] = vertical ? ["left", "right"] : ["top", "bottom"];
     const neighbor = (before ? element.previousElementSibling : element.nextElementSibling)
@@ -103,18 +107,26 @@ export function dropLineBox(intent) {
     ? { left, top, width: right - left, height: bottom - top } : null;
 }
 
-function folderGap(event) {
+function itemId(element) {
+  return element?.dataset.folderId ?? element?.dataset.bookmarkId;
+}
+
+function renderedChildren(container) {
+  return [...container.children].flatMap(child =>
+    child.classList.contains("direct-bookmarks") ? [...child.children] : [child])
+    .filter(child => itemId(child));
+}
+
+function insertionGap(event) {
   const container = event.target.closest(".folder-content, #folders")
     ?? event.target.closest("#page")?.querySelector("#folders");
   if (!container) return null;
-  const children = [...container.children].filter(child => child.dataset.folderId || child.dataset.bookmarkId);
+  const children = renderedChildren(container);
   if (!children.length) return null;
   const boundaries = [];
   for (let index = 1; index < children.length; index++) {
     const previous = children[index - 1];
     const next = children[index];
-    // Preserve insertion positions among mixed native folder contents as well.
-    if (!previous.dataset.folderId && !next.dataset.folderId) continue;
     const boundary = { previous, next, container };
     if (container.id === "folders"
         && !sameRow(previous.getBoundingClientRect(), next.getBoundingClientRect())) {
@@ -162,16 +174,13 @@ export function dropIntent(event, sourceId, nodes) {
     };
   }
 
-  if (nodeType(source) === "folder") {
-    const boundary = folderGap(event);
-    if (boundary) {
-      const id = element => element?.dataset.folderId ?? element?.dataset.bookmarkId;
-      // Anchor to the other sibling when the source borders its own gap.
-      const before = !!boundary.next && id(boundary.next) !== sourceId;
-      const element = before ? boundary.next : boundary.previous;
-      const intent = beside(element, nodes.get(id(element)), before);
-      return intent ? { ...intent, boundary } : null;
-    }
+  const boundary = insertionGap(event);
+  if (boundary) {
+    // Anchor to the other sibling when the source borders its own gap.
+    const before = !!boundary.next && itemId(boundary.next) !== sourceId;
+    const element = before ? boundary.next : boundary.previous;
+    const intent = beside(element, nodes.get(itemId(element)), before);
+    return intent ? { ...intent, boundary } : null;
   }
 
   const folder = event.target.closest("[data-folder-id]");
@@ -186,7 +195,31 @@ export function dropIntent(event, sourceId, nodes) {
     return beside(row, target, before);
   }
   if (folder) return inside(folder, folder.dataset.folderId);
-  const root = event.target.closest("#unfoldered")
-    ?? (nodeType(source) === "bookmark" ? event.target.closest("#folders") : null);
-  return root ? inside(root, OTHER_BOOKMARKS_ID) : null;
+  const root = event.target.closest("#folders")
+    ?? event.target.closest("#page, body, html")?.querySelector("#folders");
+  if (!root || !canMoveToFolder(nodes, sourceId, OTHER_BOOKMARKS_ID)) return null;
+  const children = renderedChildren(root);
+  if (!children.length) {
+    return { element: root, destination: { parentId: OTHER_BOOKMARKS_ID }, indicator: "before", empty: true };
+  }
+  const group = event.target.closest(".direct-bookmarks");
+  if (!group && nodeType(source) !== "bookmark") return null;
+  const items = group ? renderedChildren(group) : children;
+  const last = items.at(-1);
+  if (!last) return null;
+  const destination = { parentId: OTHER_BOOKMARKS_ID };
+  if (itemId(last) === sourceId) {
+    // Keep already-last items in their exact native slot, including around
+    // separators that are not displayed. Never use the source as its own anchor.
+    const siblings = nodes.get(OTHER_BOOKMARKS_ID).children ?? [];
+    const next = siblings[siblings.findIndex(item => item.id === sourceId) + 1];
+    if (next) Object.assign(destination, { anchorId: next.id, position: "before" });
+  } else if (group) {
+    // A group is a position in the root sequence, not a destination folder.
+    Object.assign(destination, { anchorId: itemId(last), position: "after" });
+  }
+  return {
+    element: last, destination, indicator: "after",
+    boundary: { previous: last, next: null, container: root, edge: "right" },
+  };
 }

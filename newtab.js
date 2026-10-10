@@ -2,13 +2,11 @@ import "./theme-page.js";
 import { nodeType, OTHER_BOOKMARKS_ID } from "./bookmarks.js";
 import { createIconProvider } from "./bookmark-icons.js";
 import { dropIntent, dropLineBox } from "./drag-drop.js";
-import { gridColumns } from "./layout.js";
+import { gridColumns, topLevelGroups } from "./layout.js";
 import { createRearrangement } from "./rearrangement.js";
 import { icon } from "./icons.js";
 import { createBookmarkEditor } from "./bookmark-editor.js";
 
-const unfoldered = document.querySelector("#unfoldered");
-const direct = document.querySelector("#direct-bookmarks");
 const folders = document.querySelector("#folders");
 const status = document.querySelector("#status");
 const bookmarkMenu = document.querySelector("#bookmark-menu");
@@ -63,7 +61,7 @@ function updateGridColumns() {
 
 function updateLayout() {
   updateGridColumns();
-  for (const card of folders.children) {
+  for (const card of folders.querySelectorAll(".folder-card")) {
     updateFolderScrollShadow(card.querySelector(".folder-content"));
   }
   updateDropIndicator();
@@ -95,7 +93,7 @@ function openBookmarkMenu(event) {
   const folder = event.target.closest(".folder-card, .nested-folder");
   const row = itemRow ?? folder?.querySelector(".folder-heading");
   const background = [document.documentElement, document.body, document.querySelector("#page"),
-    unfoldered, direct, folders].includes(event.target);
+    folders].includes(event.target) || event.target.matches(".direct-bookmarks");
   if ((!row && !background) || editing || dragging) return;
   event.preventDefault();
   closeBookmarkMenu();
@@ -113,7 +111,7 @@ function openBookmarkMenu(event) {
   bookmarkMenu.hidden = false;
   document.body.classList.add("bookmark-menu-open");
   row?.setAttribute("data-menu-target", "");
-  const box = (container?.querySelector(".item-name") ?? unfoldered).getBoundingClientRect();
+  const box = (container?.querySelector(".item-name") ?? folders).getBoundingClientRect();
   const keyboard = event.type === "keydown" || (event.clientX === 0 && event.clientY === 0);
   const x = keyboard ? box.left : event.clientX;
   const y = keyboard ? box.bottom : event.clientY;
@@ -323,17 +321,20 @@ function render(tree) {
     for (const child of node.children ?? []) index(child);
   }
   index(tree);
-  direct.replaceChildren();
   folders.replaceChildren();
-  for (const node of tree.children ?? []) {
-    if (nodeType(node) === "bookmark") direct.append(renderBookmark(node));
-    else if (nodeType(node) === "folder") {
-      const card = renderFolder(node);
-      folders.append(card);
+  for (const group of topLevelGroups(tree.children ?? [])) {
+    if (group.type === "folder") folders.append(renderFolder(group.nodes[0]));
+    else {
+      const direct = document.createElement("div");
+      direct.className = "direct-bookmarks";
+      direct.setAttribute("role", "group");
+      direct.setAttribute("aria-label", "Bookmarks directly in Other Bookmarks");
+      for (const node of group.nodes) direct.append(renderBookmark(node));
+      folders.append(direct);
     }
   }
   updateGridColumns();
-  for (const card of folders.children) {
+  for (const card of folders.querySelectorAll(".folder-card")) {
     const content = card.querySelector(".folder-content");
     content.scrollTop = scrollPositions.get(card.dataset.folderId) ?? 0;
     updateFolderScrollShadow(content);

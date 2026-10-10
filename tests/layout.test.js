@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { gridColumns } from "../layout.js";
+import { gridColumns, topLevelGroups } from "../layout.js";
 
 test("column count respects the 400px minimum including grid gaps", () => {
   for (let count = 2; count <= 6; count++) {
@@ -25,4 +25,31 @@ test("column thresholds account for custom grid gaps", () => {
 test("a 2560px viewport keeps six columns after page padding", () => {
   const width = 2560 - 32;
   assert.equal(gridColumns(width), 6);
+});
+
+test("top-level groups retain native mixed order and isolate each bookmark run", () => {
+  const children = [
+    { id: "a", type: "folder" }, { id: "b", type: "folder" },
+    { id: "1", type: "bookmark" }, { id: "2", type: "bookmark" },
+    { id: "c", type: "folder" }, { id: "3", type: "bookmark" },
+    { id: "d", type: "folder" },
+  ];
+  const original = structuredClone(children);
+  const groups = topLevelGroups(children);
+  assert.deepEqual(groups.map(group => group.nodes.map(node => node.id)),
+    [["a"], ["b"], ["1", "2"], ["c"], ["3"], ["d"]]);
+  assert.deepEqual(groups.flatMap(group => group.nodes), children);
+  assert.deepEqual(children, original);
+});
+
+test("bookmark groups merge and split as native placement changes", () => {
+  const one = { id: "1", url: "https://one.test/" };
+  const two = { id: "2", url: "https://two.test/" };
+  const folder = { id: "folder", children: [] };
+  assert.deepEqual(topLevelGroups([]), []);
+  assert.deepEqual(topLevelGroups([one, two]), [{ type: "bookmark", nodes: [one, two] }]);
+  assert.deepEqual(topLevelGroups([one, folder, two]).map(group => group.type),
+    ["bookmark", "folder", "bookmark"]);
+  assert.deepEqual(topLevelGroups([folder, one, { type: "separator" }, two]),
+    [{ type: "folder", nodes: [folder] }, { type: "bookmark", nodes: [one, two] }]);
 });

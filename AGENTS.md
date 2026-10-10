@@ -7,13 +7,14 @@
 ## Bookmark behavior
 - Firefox bookmarks are the source of truth; mutations must update actual bookmarks through the bookmarks API.
 - Display only the built-in Other Bookmarks subtree, identified by `unfiled_____`, not its localized name.
-- Display direct bookmarks first, left to right with wrapping, retaining their relative native order.
-- Display immediate child folders as grid cards in native order, left to right and then top to bottom.
+- Preserve native mixed bookmark/folder sibling order at the top level and at every nested level.
+- Display consecutive direct bookmarks as compact, full-width bookmark-only groups, left to right with wrapping. Each switch between direct bookmarks and folder cards starts a new grid row; never put a folder on a direct-bookmark row.
+- Display consecutive immediate child folders as grid cards in native order, left to right and then top to bottom.
 - List folder contents vertically in native order. Render deeper folders as always-expanded, indented sections.
-- The unfoldered-first presentation is a display rule; do not reorder native bookmarks just to render it.
+- Grouping is a display rule; do not reorder native bookmarks just to render it.
 - Support moving bookmarks and folders within and between displayed folders and the unfoldered area, including reordering sibling folders. Prevent moving folders into themselves or their descendants.
-- Dropping a folder anywhere on another folder's heading or contents nests it. Reordering uses the actual gaps between sibling cards or sections. Grid insertion lines are always vertical. At a wrapped row boundary, the narrow gap right of the previous row's last card and the narrow gap left of the next row's first card insert at the same native position, with the line beside the hovered card; the space between rows is not a folder insertion target. Top/bottom end gaps show a line beside the first/last card. Inside folders, insertion lines are horizontal in the gap, preserving native mixed bookmark/folder ordering.
-- The `#folders` container accepts folder drops only in measured insertion gaps, never as a generic root destination. Its background and unused grid space accept bookmark drops. The unfoldered area accepts both bookmarks and folders.
+- Dropping a folder anywhere on another folder's heading or contents nests it. Reordering bookmarks and folders uses the actual gaps between native siblings, including gaps between two bookmarks and across direct-bookmark groups. Grid insertion lines are always vertical. At a wrapped or mixed row boundary, the narrow gap right of the previous row's last item and the narrow gap left of the next row's first item insert at the same native position, with the line beside the hovered item; the space between rows is not a folder insertion target. Top/bottom end gaps show a line beside the first/last item. Inside folders, insertion lines are horizontal in the gap, preserving native mixed bookmark/folder ordering.
+- The `#folders` container holds the mixed native sequence. It accepts folder drops only in measured insertion gaps, never as a generic root destination, except when empty. Its background and unused grid space, plus the page/canvas background, accept bookmark drops that append to Other Bookmarks. Each `.direct-bookmarks` group accepts both bookmarks and folders; its background inserts after that group's last bookmark in the native order. Group/grid/page background drops show a vertical insertion line beside the destination's last item, or at the start of an empty grid, never a whole-container highlight. Reserve inside-drop highlights for actual folders. Precise insertion gaps take priority over background drops; already-last background drops preserve native placement without self anchors.
 - Observe bookmark events so changes made in Firefox's native UI appear in the grid.
 
 ## Layout

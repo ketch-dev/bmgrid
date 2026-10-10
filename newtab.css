@@ -29,22 +29,16 @@ button {
   padding: 16px;
 }
 
-#unfoldered {
-  border-radius: 8px;
-}
-
-#unfoldered:has(#direct-bookmarks > .bookmark) {
-  margin-bottom: 16px;
-}
-
-#direct-bookmarks {
+.direct-bookmarks {
+  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 8px;
+  border-radius: 8px;
 }
 
-#direct-bookmarks > .bookmark {
+.direct-bookmarks > .bookmark {
   min-width: 64px;
   max-width: 400px;
   padding: 3px 10px;
@@ -59,6 +53,10 @@ button {
   align-items: stretch;
   gap: 16px;
   border-radius: 16px;
+}
+
+#folders:empty {
+  min-height: 32px;
 }
 
 .folder-card,
@@ -171,7 +169,7 @@ button {
 body:not(.bookmark-menu-open)
   .bookmark:is(:hover, :has(.item-name:focus-visible)),
 body:not(.bookmark-menu-open)
-  #direct-bookmarks
+  .direct-bookmarks
   > .bookmark:is(:hover, :has(.item-name:focus-visible)),
 body:not(.bookmark-menu-open)
   .folder-heading:is(
@@ -179,7 +177,7 @@ body:not(.bookmark-menu-open)
     :has(.item-name:focus-visible, .folder-rename-input:focus)
   ),
 .bookmark[data-menu-target],
-#direct-bookmarks > .bookmark[data-menu-target],
+.direct-bookmarks > .bookmark[data-menu-target],
 .folder-heading[data-menu-target] {
   background: var(--surface-hover);
 }
@@ -240,7 +238,7 @@ body:not(.bookmark-menu-open) .bookmark:hover > a.item-name,
   border-radius: 8px;
 }
 
-#direct-bookmarks > .bookmark > a.item-name::after {
+.direct-bookmarks > .bookmark > a.item-name::after {
   inset: -1px;
   border: 1px solid transparent;
   border-radius: 9px;
@@ -310,11 +308,11 @@ body:not(.bookmark-menu-open) .bookmark:hover > a.item-name,
 [data-dragging="true"] {
   opacity: 0.45;
 }
-[data-drop="inside"] {
+:is(.folder-card, .nested-folder)[data-drop="inside"] {
   position: relative;
   isolation: isolate;
 }
-[data-drop="inside"]::after {
+:is(.folder-card, .nested-folder)[data-drop="inside"]::after {
   content: "";
   position: absolute;
   inset: -2px;
