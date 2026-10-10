@@ -177,18 +177,13 @@ button {
 
 .bookmark-open::before {
   content: "";
-  position: absolute;
-  top: 50%;
-  right: 6px;
+  flex: none;
   width: 12px;
   height: 12px;
-  transform: translateY(-50%);
+  /* Together with the row's 2px flex gap, leave 8px before the favicon. */
+  margin-right: 6px;
   border-radius: 50%;
   background: var(--open-bookmark-dot);
-  box-shadow: 0 0 0 2px var(--bookmark-dot-halo, var(--surface));
-  transition: box-shadow 150ms ease;
-  /* Float over truncated text and the full-row link without stealing input. */
-  z-index: 2;
   pointer-events: none;
 }
 
@@ -205,7 +200,6 @@ body:not(.bookmark-menu-open)
 .bookmark[data-menu-target],
 .direct-bookmarks > .bookmark[data-menu-target],
 .folder-heading[data-menu-target] {
-  --bookmark-dot-halo: var(--surface-hover);
   background: var(--surface-hover);
 }
 
@@ -366,8 +360,7 @@ body:not(.bookmark-menu-open) .bookmark:hover > a.item-name,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bookmark,
-  .bookmark-open::before {
+  .bookmark {
     transition: none;
   }
 }
