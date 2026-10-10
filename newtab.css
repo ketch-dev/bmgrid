@@ -1,6 +1,11 @@
 :root {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 14px;
+  --open-bookmark-dot: #4ac978;
+}
+
+:root[data-theme="light"] {
+  --open-bookmark-dot: #23884a;
 }
 
 * {
@@ -170,6 +175,23 @@ button {
   margin-top: 4px;
 }
 
+.bookmark-open::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  width: 12px;
+  height: 12px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: var(--open-bookmark-dot);
+  box-shadow: 0 0 0 2px var(--bookmark-dot-halo, var(--surface));
+  transition: box-shadow 150ms ease;
+  /* Float over truncated text and the full-row link without stealing input. */
+  z-index: 2;
+  pointer-events: none;
+}
+
 body:not(.bookmark-menu-open)
   .bookmark:is(:hover, :has(.item-name:focus-visible)),
 body:not(.bookmark-menu-open)
@@ -183,6 +205,7 @@ body:not(.bookmark-menu-open)
 .bookmark[data-menu-target],
 .direct-bookmarks > .bookmark[data-menu-target],
 .folder-heading[data-menu-target] {
+  --bookmark-dot-halo: var(--surface-hover);
   background: var(--surface-hover);
 }
 
@@ -343,7 +366,8 @@ body:not(.bookmark-menu-open) .bookmark:hover > a.item-name,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bookmark {
+  .bookmark,
+  .bookmark-open::before {
     transition: none;
   }
 }

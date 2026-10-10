@@ -2,7 +2,7 @@
 
 ## Scope
 - This is a Firefox new-tab extension built with plain HTML, CSS, and JavaScript.
-- Keep the UI minimal and grayscale. Add features or dependencies only when requested.
+- Keep the UI minimal and grayscale, except for green open-bookmark status dots. Add features or dependencies only when requested.
 
 ## Bookmark behavior
 - Firefox bookmarks are the source of truth; mutations must update actual bookmarks through the bookmarks API.
@@ -33,7 +33,8 @@
 - Right-click a bookmark or folder heading to show a small popup with the pen icon and Edit text for bookmarks or Rename text for folders, and the trash-bin icon and Delete text; each action uses a single click. Support the context-menu key and Shift+F10 as well, with keyboard-focusable folder names.
 - Bookmark-row popups offer only Edit and Delete. Folder-heading popups put plus-icon Add Bookmark and Add Folder actions first, followed by Rename and Delete. Empty folder areas, including content padding and gaps between items, offer only Add Bookmark and Add Folder; target the innermost folder containing the clicked space. Creation actions from headings or empty folder areas append inside that folder. Grid gaps and the unfoldered/canvas background offer both creation actions, appending to Other Bookmarks. Focus the first visible popup action when opening. Use the compact bookmark modal for creation, with Name and URL for bookmarks and Name only for folders; preserve drafts on failure and defer refresh while open. Creation headings show "Add Bookmark to {FOLDER_NAME}" or "Add Folder to {FOLDER_NAME}", with the destination name white in Dark or dark in Light and surrounding text dimmed; additions to Other Bookmarks show only "Add Bookmark" or "Add Folder" in dimmed text.
 - Delete immediately and without confirmation; deleting a folder removes its descendants. Dismiss the action popup after an action, outside click, Escape, scrolling, resizing, or refresh.
-- Left-click a bookmark to open it in the current tab; middle-click opens a new tab.
+- Highlight bookmarks whose full URL is already open in the grid's browser window, updating live when tabs open, close, navigate, reorder, or move between windows. Normal left-click or keyboard Enter switches to the first matching tab in tab-strip order without reloading it; if none matches, open in the current tab. Preserve distinct schemes, paths, query strings, and fragments. Middle-click always opens a new tab, and modifier-clicks keep native link behavior. Update highlights in place without interrupting editing, focus, or scrolling.
+- Indicate open bookmarks with a 12px saturated green dot near the row's right edge, vertically centered and layered over text with a small surface-colored halo. Use theme-appropriate green shades; match the halo to hover, focus, and context-menu surfaces. Keep the dot pointer-transparent and out of layout so row dimensions and title truncation stay stable. The dot is the sole open-state decoration; ordinary text, hover, and keyboard-focus styles still apply.
 - Bookmark Edit opens a compact modal with Name and URL fields. Save or Enter updates changed fields in the native bookmark; Cancel, Escape, or clicking outside cancels. Retain input and show errors when saving fails. Defer grid refresh while editing, preserve text undo, and restore bookmark focus after closing.
 - When editing a URL, trim surrounding whitespace and default scheme-less addresses to HTTPS. Preserve explicit schemes and exact query/fragment text; show readable validation errors without discarding the draft.
 - Inline folder rename saves on Enter or blur and cancels on Escape.
@@ -58,6 +59,7 @@
 - `manifest.json`: permissions, new-tab override, background module, and embedded Preferences registration.
 - `background.js`: message routing and background startup.
 - `bookmark-icons.js`: replaceable icon provider; encapsulates tab-derived collection, persistent caching, and update notifications. Its public interface is `startIconBackground(api)` and `createIconProvider(api, onChanged)` returning `ready` and `getUrl(bookmark)`.
+- `open-tabs.js`: live window-scoped open-URL tracking and existing-tab activation, with click-time revalidation.
 - `bookmark.svg`: generic bookmark favicon fallback.
 - `bookmarks.js`: native bookmark operations, event cache, undo, and persistent deletion logging.
 - `newtab.html`, `newtab.css`, `newtab.js`: grid rendering and interactions.

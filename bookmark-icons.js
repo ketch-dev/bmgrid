@@ -7,8 +7,8 @@
  *
  * To adopt a future native bookmarks icon API, replace these two functions,
  * using the full bookmark object (including its ID) passed to getUrl(). The
- * background entry point may become a no-op; remove the tabs permission if it
- * is no longer needed. The grid owns image rendering and fallback icons.
+ * background entry point may become a no-op. The tabs permission is also used
+ * by open-tabs.js. The grid owns image rendering and fallback icons.
  */
 const FAVICON_CACHE_KEY = "faviconCache";
 const FAVICON_CACHE_LIMIT = 1000;

@@ -1,6 +1,7 @@
 import "./theme-page.js";
 import { nodeType, OTHER_BOOKMARKS_ID } from "./bookmarks.js";
 import { createIconProvider } from "./bookmark-icons.js";
+import { createOpenTabs } from "./open-tabs.js";
 import { dropIntent, dropLineBox } from "./drag-drop.js";
 import { gridColumns, topLevelGroups } from "./layout.js";
 import { createRearrangement } from "./rearrangement.js";
@@ -27,6 +28,8 @@ let menuTarget = null;
 let activeDrop = null;
 const icons = createIconProvider(browser, updateBookmarkIcons);
 icons.ready.catch(error => { console.error("bmgrid icons:", error); });
+const openTabs = createOpenTabs(browser, updateOpenBookmarks);
+openTabs.ready.catch(error => { console.error("bmgrid open tabs:", error); });
 const editor = createBookmarkEditor(bookmarkEditor, request, target => {
   editing = null;
   if (target?.row?.isConnected) target.row.querySelector(".item-name").focus();
@@ -216,7 +219,7 @@ function appendTitle(node, container, isLink) {
   name.textContent = node.title || node.url || "Untitled folder";
   name.title = isLink ? `${node.title}\n${node.url}` : node.title;
   if (isLink) {
-    // Native links give current-tab left clicks and new-tab middle clicks.
+    // Keep native links for middle-clicks, modifier-clicks, and context menus.
     name.href = node.url;
   } else {
     name.tabIndex = 0;
@@ -265,6 +268,7 @@ function renderBookmark(node) {
   updateBookmarkIcon(image, node);
   row.append(image);
   appendTitle(node, row, true);
+  updateBookmarkOpenState(row, node);
   makeDraggable(row, node);
   return row;
 }
@@ -284,6 +288,38 @@ function updateBookmarkIcons() {
     updateBookmarkIcon(image, bookmark);
   }
 }
+
+function updateBookmarkOpenState(row, bookmark) {
+  const open = openTabs.has(bookmark.url);
+  row.classList.toggle("bookmark-open", open);
+  const name = row.querySelector("a.item-name");
+  name.title = `${bookmark.title}\n${bookmark.url}`;
+  if (open) {
+    const description = "Open in this window. Click to switch to its tab; middle-click to open a new tab.";
+    name.title += `\n${description}`;
+    name.setAttribute("aria-description", description);
+  } else {
+    name.removeAttribute("aria-description");
+  }
+}
+
+function updateOpenBookmarks() {
+  for (const row of folders.querySelectorAll(".bookmark")) {
+    updateBookmarkOpenState(row, nodes.get(row.dataset.bookmarkId));
+  }
+}
+
+folders.addEventListener("click", async event => {
+  const link = event.target.closest(".bookmark > a.item-name");
+  if (!link || event.defaultPrevented || event.button !== 0
+      || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  try {
+    if (!await openTabs.activate(link.href)) window.location.assign(link.href);
+  } catch (error) {
+    showError(error);
+  }
+});
 
 function renderFolder(node, nested = false) {
   const section = document.createElement(nested ? "section" : "article");
