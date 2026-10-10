@@ -15,8 +15,8 @@
     "default_icon": "toolbar-icon.svg",
     "default_popup": "popup.html",
     "theme_icons": [
-      { "light": "toolbar-icon.svg", "dark": "toolbar-icon.svg", "size": 16 },
-      { "light": "toolbar-icon.svg", "dark": "toolbar-icon.svg", "size": 32 }
+      { "light": "toolbar-icon.svg", "dark": "toolbar-icon-dark.svg", "size": 16 },
+      { "light": "toolbar-icon.svg", "dark": "toolbar-icon-dark.svg", "size": 32 }
     ]
   },
   "chrome_url_overrides": {

@@ -1,8 +1,10 @@
 import { createBookmarkController } from "./bookmarks.js";
 import { startIconBackground } from "./bookmark-icons.js";
+import { startToolbarIconBackground } from "./toolbar-icon.js";
 
 const controller = createBookmarkController(browser);
 startIconBackground(browser);
+startToolbarIconBackground(browser);
 
 browser.runtime.onMessage.addListener(message => {
   if (message?.scope !== "bmgrid") return undefined;

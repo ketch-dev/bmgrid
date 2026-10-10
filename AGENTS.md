@@ -53,7 +53,7 @@
 - Keep log entries after undo. Preserve legacy entries without inventing missing bookmark names.
 - Export UTF-8 `deletion-log.txt` from the embedded Firefox Preferences page in `about:addons`.
 - The toolbar popup and embedded Preferences share three actions: Add Bookmark (plus icon), Open Grid (outline bookmark icon), and Download Deletion Log (download icon). Toolbar creation prefills the active tab's name and URL; Preferences creation starts empty. Both append to Other Bookmarks using the compact editor. Open Grid opens a new tab.
-- Use the same outline bookmark ribbon everywhere. Reserve Firefox dark-theme text color (`#fbfbfe`) exclusively for the toolbar button. Tab favicons and Add-ons Manager branding use `#cccccc`; popup and Preferences action icons inherit `currentColor` so all actions match.
+- Use the same outline bookmark ribbon everywhere. The toolbar button follows each window's browser-theme color (`icons`, then `toolbar_text`, then `bookmark_text`) and updates live. When no color is exposed, use bright (`#fbfbfe`) and dark (`#5b5b66`) toolbar-only fallbacks selected by Firefox's `theme_icons`. Tab favicons and Add-ons Manager branding use `#cccccc`; popup and Preferences action icons inherit `currentColor` so all actions match.
 
 ## Code map
 - `manifest.json`: permissions, new-tab override, background module, and embedded Preferences registration.
@@ -70,7 +70,8 @@
 - `theme.css`, `theme.js`, `theme-page.js`: shared styles, local theme preference, synchronized color overrides, and live page updates.
 - `theme-colors.js`, `theme-settings.js`: built-in palette/role definitions, color validation, and shared Preferences/popup controls.
 - `icons.js`: shared action icons inheriting the surrounding text color.
-- `toolbar-icon.svg`: bright outline bookmark branding exclusively for the toolbar button.
+- `toolbar-icon.js`: browser-theme toolbar coloring, per-window updates, and normal/high-density icon rendering.
+- `toolbar-icon.svg`, `toolbar-icon-dark.svg`: bright/dark outline bookmark fallbacks exclusively for the toolbar button; the bright SVG is also the source shape for theme-colored icons.
 - `extension-icon.svg`: dimmer outline bookmark branding for the Add-ons Manager and extension-owned tab favicons.
 - `bookmark-editor.js`, `bookmark-editor.css`: shared compact bookmark/folder creation and bookmark editing UI.
 - `tests/`: Node tests and the fake bookmarks API.
