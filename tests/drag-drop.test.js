@@ -70,28 +70,34 @@ async function setup() {
   return { api, nodes, page, grid, unfoldered, math, physics, algebra, folder, layoutGrid, intent };
 }
 
-test("the whole card nests, including its left and right edges", async () => {
+test("folder headings and filled card backgrounds do not accept bookmark or folder drops", async () => {
   const { physics, intent } = await setup();
-  for (const target of [physics.name, physics.content, physics.card]) {
-    for (const x of [416, 417, 616, 815, 816]) {
-      const result = intent("math", target, x);
-      assert.deepEqual(result.destination, { parentId: "physics" });
-      assert.equal(result.indicator, "inside");
-      assert.equal(result.element, physics.card);
+  physics.content.box = { left: 424, top: 40, width: 384, height: 352 };
+  element(["[data-bookmark-id]"], physics.content, { bookmarkId: "physics-a" },
+    { left: 432, top: 48, width: 368, height: 24 });
+  for (const source of ["math", "direct-a"]) {
+    for (const target of [physics.name, physics.heading, physics.card]) {
+      for (const x of [416, 417, 616, 815, 816]) assert.equal(intent(source, target, x, 20), null);
     }
+    assert.equal(intent(source, physics.content, 600, 200), null);
   }
 });
 
-test("nested headings and contents nest even at their edges", async () => {
+test("nested headings reject drops while bookmark rows offer exact positions", async () => {
   const { algebra, intent } = await setup();
+  algebra.content.box = { left: 16, top: 120, width: 368, height: 40 };
   for (const y of [80, 81, 100, 119, 120]) {
-    const result = intent("physics", algebra.name, 200, y);
-    assert.deepEqual(result.destination, { parentId: "algebra" });
-    assert.equal(result.indicator, "inside");
+    for (const source of ["physics", "direct-a"]) assert.equal(intent(source, algebra.name, 200, y), null);
   }
-  assert.equal(intent("physics", algebra.content, 16, 140).indicator, "inside");
-  const bookmark = element(["[data-bookmark-id]"], algebra.content, { bookmarkId: "algebra-a" });
-  assert.deepEqual(intent("physics", bookmark).destination, { parentId: "algebra" });
+  const bookmark = element(["[data-bookmark-id]"], algebra.content, { bookmarkId: "algebra-a" },
+    { left: 24, top: 128, width: 352, height: 24 });
+  for (const source of ["physics", "direct-a"]) {
+    assert.deepEqual(intent(source, bookmark, 200, 130).destination,
+      { parentId: "algebra", anchorId: "algebra-a", position: "before" });
+    assert.deepEqual(intent(source, bookmark, 200, 150).destination,
+      { parentId: "algebra", anchorId: "algebra-a", position: "after" });
+    assert.equal(dropLineBox(intent(source, bookmark, 200, 130)).height, 2);
+  }
 });
 
 test("the actual same-row gap inserts nested folders at the root", async () => {
@@ -138,7 +144,7 @@ test("both sides of a wrapped boundary insert at the same position with a line b
     }
     for (const x of [-8, 8, 408, 800, 824, 1224]) assert.equal(intent("algebra", target, x, 408), null);
   }
-  assert.deepEqual(intent("direct-a", grid, 200, 408).destination, { parentId: "unfiled_____" });
+  assert.equal(intent("direct-a", grid, 200, 408), null);
   assert.equal(intent("algebra", grid, 800, 500), null);
 });
 
@@ -267,11 +273,11 @@ test("nested first and last gaps preserve mixed ordering and avoid unused conten
   const end = intent("physics", math.content, 200, 124);
   assert.deepEqual(end.destination, { parentId: "math", anchorId: "math-b", position: "after" });
   assert.deepEqual(dropLineBox(end), { left: 16, top: 123, width: 368, height: 2 });
-  assert.equal(intent("physics", math.content, 200, 132).indicator, "inside");
+  assert.equal(intent("physics", math.content, 200, 132), null);
   assert.equal(intent("math", math.content, 200, 44), null);
   assert.equal(intent("math", math.content, 200, 124), null);
-  assert.equal(intent("physics", first, 200, 48).indicator, "inside");
-  assert.equal(intent("physics", last, 200, 120).indicator, "inside");
+  assert.equal(intent("physics", first, 200, 48).indicator, "before");
+  assert.equal(intent("physics", last, 200, 120).indicator, "after");
   first.box.top -= 20;
   assert.equal(dropLineBox(start), null);
   last.box.top += 300;
@@ -329,7 +335,7 @@ test("unused grid space and outside-gap coordinates reject folders but accept bo
       }
     }
     for (const source of ["direct-a", "algebra-a"]) {
-      const result = intent(source, target);
+      const result = intent(source, target, 1000, 40);
       assert.deepEqual(result.destination, { parentId: "unfiled_____" });
       assert.equal(result.indicator, "after");
       assert.equal(result.element, physics.card);
@@ -347,13 +353,13 @@ test("self, descendant, and descendant-gap drops are rejected", async () => {
   for (const target of [math.name, math.content, algebra.name, algebra.content, deep.name, deep.content]) {
     for (const x of [0, 200, 400]) assert.equal(intent("math", target, x), null);
   }
-  assert.deepEqual(intent("algebra", math.content).destination, { parentId: "math" });
+  assert.equal(intent("algebra", math.content), null);
   assert.equal(intent("math", algebra.content, 200, 172), null);
   assert.equal(intent("algebra", algebra.content, 200, 172), null);
   assert.equal(intent("missing", math.name), null);
 });
 
-test("bookmark insertion and nesting retain their existing targeting", async () => {
+test("bookmark insertion retains its targeting and headings reject drops", async () => {
   const { math, algebra, unfoldered, intent } = await setup();
   const direct = element(["[data-bookmark-id]"], unfoldered, { bookmarkId: "direct-b" });
   const nested = element(["[data-bookmark-id]"], algebra.content, { bookmarkId: "algebra-a" });
@@ -364,7 +370,7 @@ test("bookmark insertion and nesting retain their existing targeting", async () 
     parentId: "algebra", anchorId: "algebra-a", position: "after",
   });
   assert.equal(intent("algebra-a", nested), null);
-  assert.deepEqual(intent("direct-a", math.name, 0).destination, { parentId: "math" });
+  assert.equal(intent("direct-a", math.name, 0), null);
   assert.deepEqual(intent("algebra", direct).destination, {
     parentId: "unfiled_____", anchorId: "direct-b", position: "after",
   });
@@ -406,32 +412,33 @@ test("nested gap lines are clipped to the outer card and recalculated when scrol
 });
 
 test("direct bookmark lines use measured gaps and retain end and wrapped-row placement", () => {
-  const direct = element([".direct-bookmarks"]);
-  const first = element([".bookmark"], direct, {}, { left: 16, top: 0, width: 80, height: 30 });
-  const second = element([".bookmark"], direct, {}, { left: 108, top: 0, width: 80, height: 30 });
+  const page = element(["#page"], null, {}, { left: 0, top: 0, width: 432, height: 100 });
+  const grid = element(["#folders"], page, {}, { left: 16, top: 0, width: 400, height: 68 });
+  const direct = element([".direct-bookmarks"], grid);
+  const first = element([".bookmark"], direct, { bookmarkId: "first" }, { left: 16, top: 0, width: 80, height: 30 });
+  const second = element([".bookmark"], direct, { bookmarkId: "second" }, { left: 108, top: 0, width: 80, height: 30 });
   const line = (element, indicator) => dropLineBox({ element, indicator });
-  assert.deepEqual(line(first, "before"), { left: 11, top: 0, width: 2, height: 30 });
+  assert.deepEqual(line(first, "before"), { left: 7, top: 0, width: 2, height: 30 });
   assert.deepEqual(line(first, "after"), { left: 101, top: 0, width: 2, height: 30 });
   assert.deepEqual(line(second, "before"), line(first, "after"));
-  assert.deepEqual(line(second, "after"), { left: 191, top: 0, width: 2, height: 30 });
+  assert.deepEqual(line(second, "after"), { left: 195, top: 0, width: 2, height: 30 });
   second.box = { left: 16, top: 38, width: 80, height: 30 };
-  assert.deepEqual(line(first, "after"), { left: 99, top: 0, width: 2, height: 30 });
-  assert.deepEqual(line(second, "before"), { left: 11, top: 38, width: 2, height: 30 });
+  assert.deepEqual(line(first, "after"), { left: 103, top: 0, width: 2, height: 30 });
+  assert.deepEqual(line(second, "before"), { left: 7, top: 38, width: 2, height: 30 });
 });
 
 test("nested bookmark lines preserve row width and disappear outside the scrolling viewport", async () => {
   const { math, algebra } = await setup();
   math.content.box = { left: 8, top: 40, width: 384, height: 352 };
-  const bookmark = element([".bookmark"], algebra.content, {}, { left: 16, top: 392, width: 368, height: 36 });
+  const bookmark = element([".bookmark"], algebra.content, { bookmarkId: "algebra-a" }, { left: 16, top: 392, width: 368, height: 36 });
   const result = { element: bookmark, indicator: "before" };
-  assert.deepEqual(dropLineBox(result), { left: 16, top: 391, width: 368, height: 1 });
+  assert.deepEqual(dropLineBox(result), { left: 16, top: 387, width: 368, height: 2 });
   bookmark.box.top = 500;
   assert.equal(dropLineBox(result), null);
 });
 
-test("nesting and absent targets never produce an insertion line", () => {
+test("absent targets never produce an insertion line", () => {
   assert.equal(dropLineBox(null), null);
-  assert.equal(dropLineBox({ indicator: "inside" }), null);
 });
 
 async function mixedRoot() {
@@ -670,4 +677,262 @@ test("empty root drops display a starting line rather than a container highlight
       grid.box.left -= 10;
     }
   }
+});
+
+test("empty top-level and nested folders accept a first item with a horizontal marker", async () => {
+  for (const nested of [false, true]) {
+    for (const source of ["direct-a", "physics"]) {
+      const { api, nodes, grid, math, folder, intent } = await setup();
+      const empty = await api.bookmarks.create({ parentId: nested ? "math" : "unfiled_____", type: "folder", title: "Empty" });
+      nodes.set(empty.id, empty);
+      const target = folder(empty.id, nested ? math.content : grid, nested,
+        nested ? { left: 16, top: 80, width: 368, height: 64 } : { left: 416, top: 0, width: 400, height: 64 });
+      target.content.box = nested ? { left: 16, top: 120, width: 368, height: 24 }
+        : { left: 416, top: 40, width: 400, height: 24 };
+      const result = intent(source, target.content, nested ? 200 : 600, nested ? 132 : 52);
+      assert.deepEqual(result.destination, { parentId: empty.id });
+      assert.equal(result.indicator, "before");
+      assert.equal(result.element, target.content);
+      assert.deepEqual(dropLineBox(result), nested ? { left: 24, top: 127, width: 352, height: 2 }
+        : { left: 424, top: 47, width: 384, height: 2 });
+      assert.equal(intent(source, target.heading), null);
+      assert.equal(intent(source, target.card), null);
+      assert.equal(intent(empty.id, target.content), null);
+      if (nested) assert.equal(intent("math", target.content), null);
+      const controller = createBookmarkController(api);
+      await controller.ready;
+      await controller.handle({ action: "move", id: source, destination: result.destination });
+      assert.deepEqual(api.find(empty.id).children.map(node => node.id), [source]);
+    }
+  }
+});
+
+test("empty nested-folder markers are clipped to the outer scrolling card and track scrolling", async () => {
+  const { math, algebra, intent } = await setup();
+  algebra.content.box = { left: 16, top: 120, width: 368, height: 24 };
+  math.content.box = { left: 50, top: 128, width: 200, height: 100 };
+  const result = intent("direct-a", algebra.content, 200, 132);
+  assert.deepEqual(dropLineBox(result), { left: 50, top: 128, width: 200, height: 1 });
+  math.content.box.top = 130;
+  assert.equal(dropLineBox(result), null);
+  math.content.box.top = 110;
+  algebra.content.box.top = 160;
+  assert.deepEqual(dropLineBox(result), { left: 50, top: 167, width: 200, height: 2 });
+});
+
+test("bookmark and folder drops at content positions update native mixed order exactly", async () => {
+  for (const source of ["direct-a", "physics"]) {
+    for (const position of ["first", "middle", "last"]) {
+      const { api, math, folder, intent } = await setup();
+      math.content.children.length = 0;
+      math.content.box = { left: 8, top: 40, width: 384, height: 352 };
+      element(["[data-bookmark-id]"], math.content, { bookmarkId: "math-a" },
+        { left: 16, top: 48, width: 368, height: 24 });
+      const nested = folder("algebra", math.content, true, { left: 16, top: 80, width: 368, height: 80 });
+      element(["[data-bookmark-id]"], math.content, { bookmarkId: "math-b" },
+        { left: 16, top: 168, width: 368, height: 24 });
+      const y = { first: 44, middle: 76, last: 196 }[position];
+      const result = intent(source, math.content, 200, y);
+      assert.equal(dropLineBox(result).height, 2);
+      assert.equal(result.destination.parentId, "math");
+      // Even a heading descendant cannot become a gap target by fallback.
+      assert.equal(intent(source, nested.name, 200, y), null);
+      assert.equal(intent(source, math.content, 200, 250), null);
+      assert.equal(intent("math", math.content, 200, y), null);
+      const controller = createBookmarkController(api);
+      await controller.ready;
+      await controller.handle({ action: "move", id: source, destination: result.destination });
+      const expected = ["math-a", "algebra", "separator", "math-b"];
+      expected.splice({ first: 0, middle: 1, last: 4 }[position], 0, source);
+      assert.deepEqual(api.find("math").children.map(node => node.id), expected);
+    }
+  }
+});
+
+test("folder end markers stay in the measured gap when the pointer enters a bookmark row", async () => {
+  const { math, intent } = await setup();
+  math.content.children.length = 0;
+  math.content.box = { left: 8, top: 40, width: 384, height: 352 };
+  const first = element(["[data-bookmark-id]"], math.content, { bookmarkId: "math-a" },
+    { left: 16, top: 48, width: 368, height: 24 });
+  const last = element(["[data-bookmark-id]"], math.content, { bookmarkId: "math-b" },
+    { left: 16, top: 84, width: 368, height: 24 });
+  for (const source of ["direct-a", "physics"]) {
+    for (const [row, gapY, rowY, top] of [[first, 44, 50, 43], [last, 112, 106, 111]]) {
+      const gap = intent(source, math.content, 200, gapY);
+      const onRow = intent(source, row, 200, rowY);
+      assert.deepEqual(onRow.destination, gap.destination);
+      assert.deepEqual(dropLineBox(onRow), dropLineBox(gap));
+      assert.deepEqual(dropLineBox(onRow), { left: 16, top, width: 368, height: 2 });
+    }
+  }
+});
+
+test("single-bookmark nested end markers remain stable when clipped and scrolled", async () => {
+  const { math, algebra, intent } = await setup();
+  math.content.box = { left: 8, top: 40, width: 384, height: 352 };
+  algebra.content.box = { left: 16, top: 120, width: 368, height: 56 };
+  const row = element(["[data-bookmark-id]"], algebra.content, { bookmarkId: "algebra-a" },
+    { left: 24, top: 128, width: 352, height: 32 });
+  for (const source of ["direct-a", "physics"]) {
+    for (const [gapY, rowY] of [[124, 130], [164, 158]]) {
+      const gap = intent(source, algebra.content, 200, gapY);
+      const onRow = intent(source, row, 200, rowY);
+      assert.deepEqual(onRow.destination, gap.destination);
+      assert.deepEqual(dropLineBox(onRow), dropLineBox(gap));
+      algebra.content.box.top -= 84;
+      row.box.top -= 84;
+      math.content.box.left = 50;
+      math.content.box.width = 200;
+      assert.deepEqual(dropLineBox(onRow), dropLineBox(gap));
+      assert.equal(dropLineBox(onRow).width, 200);
+      algebra.content.box.top -= 100;
+      row.box.top -= 100;
+      assert.equal(dropLineBox(gap), null);
+      assert.equal(dropLineBox(onRow), null);
+      algebra.content.box.top += 184;
+      row.box.top += 184;
+      math.content.box.left = 8;
+      math.content.box.width = 384;
+    }
+  }
+});
+
+test("mixed unfoldered rows share end markers across chip halves, gaps, and backgrounds", async () => {
+  const { firstRun, first, lastRun, last, page, intent } = await mixedRoot();
+  for (const source of ["algebra-a", "algebra"]) {
+    const beforeGap = intent(source, page, -8, 130);
+    const beforeRow = intent(source, first, 5, 130);
+    assert.deepEqual(beforeRow.destination, beforeGap.destination);
+    assert.deepEqual(dropLineBox(beforeRow), dropLineBox(beforeGap));
+    for (const [group, row, y] of [[firstRun, first, 130], [lastRun, last, 310]]) {
+      const gap = intent(source, group, 88, y);
+      const onRow = intent(source, row, 75, y);
+      const background = intent(source, group, 1000, y);
+      assert.deepEqual(dropLineBox(onRow), dropLineBox(gap));
+      assert.deepEqual(dropLineBox(background), dropLineBox(gap));
+    }
+  }
+  const canvas = intent("algebra-a", page, 1000, 200);
+  assert.deepEqual(dropLineBox(canvas), dropLineBox(intent("algebra-a", last, 75, 310)));
+});
+
+test("bookmark-only grid ends and wrapped sides stay stable across hover transitions and resize", async () => {
+  const { grid, page, firstRun, first, last, intent } = await mixedRoot();
+  grid.children = [firstRun];
+  firstRun.children.push(last);
+  last.parentElement = firstRun;
+  last.box = { left: 88, top: 116, width: 80, height: 30 };
+  grid.box = { left: 0, top: 116, width: 1232, height: 68 };
+  page.box = { left: -16, top: 100, width: 1264, height: 100 };
+  for (const source of ["algebra-a", "algebra"]) {
+    assert.deepEqual(dropLineBox(intent(source, firstRun, -8, 130)), dropLineBox(intent(source, first, 5, 130)));
+    const end = dropLineBox(intent(source, firstRun, 176, 130));
+    assert.deepEqual(dropLineBox(intent(source, last, 155, 130)), end);
+    assert.deepEqual(dropLineBox(intent(source, firstRun, 1000, 130)), end);
+  }
+  last.box = { left: 0, top: 154, width: 80, height: 30 };
+  const right = intent("algebra", firstRun, 88, 130);
+  const left = intent("algebra", page, -8, 168);
+  assert.deepEqual(dropLineBox(right), dropLineBox(intent("algebra", first, 75, 130)));
+  assert.deepEqual(dropLineBox(left), dropLineBox(intent("algebra", last, 5, 168)));
+  assert.notEqual(dropLineBox(right).top, dropLineBox(left).top);
+  last.box = { left: 88, top: 116, width: 80, height: 30 };
+  assert.deepEqual(dropLineBox(right), dropLineBox(left));
+  assert.deepEqual(dropLineBox(right), dropLineBox(intent("algebra", first, 75, 130)));
+  assert.deepEqual(dropLineBox(right), { left: 83, top: 116, width: 2, height: 30 });
+});
+
+test("grid row gutters reject both bookmarks and folders, including column intersections", async () => {
+  const { page, grid, nodes, folder, math, physics, layoutGrid, intent } = await setup();
+  nodes.set("chemistry", { id: "chemistry", parentId: "unfiled_____", type: "folder" });
+  nodes.set("biology", { id: "biology", parentId: "unfiled_____", type: "folder" });
+  layoutGrid([[math, physics], [folder("chemistry"), folder("biology")]], 2);
+  const html = element(["html"]);
+  const body = element(["body"], html);
+  body.children.push(page);
+  page.parentElement = body;
+  for (const target of [grid, page, body, html]) {
+    for (const source of ["direct-a", "algebra-a", "algebra"]) {
+      for (const x of [0, 200, 400, 408, 416, 800, 815.99]) {
+        for (const y of [400, 400.01, 408, 415.99]) {
+          assert.equal(intent(source, target, x, y), null, `${source} at ${x},${y}`);
+        }
+      }
+    }
+  }
+  // The actual canvas margin remains an intentional append target.
+  assert.deepEqual(intent("direct-a", page, -8, 408).destination, { parentId: "unfiled_____" });
+});
+
+test("column gaps include their leading edges instead of falling through to append", async () => {
+  const { api, page, grid, physics, intent } = await setup();
+  for (const target of [grid, page]) {
+    for (const source of ["direct-a", "algebra-a", "algebra"]) {
+      for (const x of [400, 400.001, 408, 415.999]) {
+        for (const y of [0, 0.001, 100, 399.999]) {
+          const result = intent(source, target, x, y);
+          assert.deepEqual(result.destination, { parentId: "unfiled_____", anchorId: "physics", position: "before" });
+          assert.deepEqual(dropLineBox(result), { left: 407, top: 0, width: 2, height: 400 });
+        }
+      }
+    }
+  }
+  // The trailing edge belongs to the next card; borders and headings still reject drops.
+  assert.equal(intent("direct-a", physics.card, 416, 100), null);
+  assert.equal(intent("direct-a", physics.heading, 416, 0), null);
+  // Transparent rounded corners still belong to the card's occupied area.
+  for (const [x, y] of [[399, 1], [417, 1], [399, 399], [417, 399]]) {
+    assert.equal(intent("direct-a", grid, x, y), null);
+  }
+  const controller = createBookmarkController(api);
+  await controller.ready;
+  await controller.handle({ action: "move", id: "algebra-a", destination: intent("algebra-a", grid, 400, 0).destination });
+  assert.deepEqual(api.find("unfiled_____").children.map(node => node.id),
+    ["math", "direct-a", "algebra-a", "physics", "direct-b"]);
+});
+
+test("row gutters track content-sized rows and resize without blocking partial-row blank space", async () => {
+  const { page, grid, nodes, folder, math, physics, layoutGrid, intent } = await setup();
+  nodes.set("chemistry", { id: "chemistry", parentId: "unfiled_____", type: "folder" });
+  const chemistry = folder("chemistry");
+  layoutGrid([[math, physics], [chemistry]], 3);
+  math.card.box.height = 100.5;
+  physics.card.box.height = 100.5;
+  chemistry.card.box.top = 116.5;
+  chemistry.card.box.height = 240;
+  grid.box.height = 356.5;
+  page.box.height = 388.5;
+  for (const target of [grid, page]) {
+    for (const x of [200, 408, 1000]) {
+      for (const y of [100.5, 108.5, 116.499]) assert.equal(intent("direct-a", target, x, y), null);
+    }
+    assert.deepEqual(intent("direct-a", target, 1000, 150).destination, { parentId: "unfiled_____" });
+    assert.equal(intent("algebra", target, 1000, 150), null);
+    assert.deepEqual(intent("direct-a", target, 824, 40).destination,
+      { parentId: "unfiled_____", anchorId: "chemistry", position: "before" });
+  }
+  layoutGrid([[math], [physics], [chemistry]], 1);
+  for (const y of [400, 408, 415.99, 816, 824, 831.99]) assert.equal(intent("direct-a", grid, 200, y), null);
+  assert.deepEqual(intent("direct-a", page, -8, 456).destination,
+    { parentId: "unfiled_____", anchorId: "physics", position: "before" });
+  // Minimum-width tracks may extend beyond the container on narrow windows.
+  grid.box.width = 300;
+  assert.equal(intent("direct-a", grid, 350, 408), null);
+});
+
+test("mixed folder/bookmark-group row gutters reject root append fallbacks", async () => {
+  const { page, grid, firstRun, intent } = await mixedRoot();
+  for (const target of [page, grid]) {
+    for (const source of ["algebra-a", "algebra"]) {
+      for (const x of [0, 408, 1000, 1231.99]) {
+        for (const y of [100, 108, 115.99, 146, 154, 161.99, 282, 290, 297.99]) {
+          assert.equal(intent(source, target, x, y), null);
+        }
+      }
+    }
+  }
+  assert.deepEqual(intent("algebra-a", firstRun, 1000, 130).destination,
+    { parentId: "unfiled_____", anchorId: "direct-a", position: "after" });
+  assert.deepEqual(intent("algebra-a", grid, 1000, 200).destination, { parentId: "unfiled_____" });
 });

@@ -2,7 +2,6 @@ import { OTHER_BOOKMARKS_ID, canMoveToFolder, nodeType } from "./bookmarks.js";
 
 const GRID_EDGE_GAP = 16;
 const CONTENT_EDGE_GAP = 8;
-const BOOKMARK_EDGE_GAP = 8;
 const DROP_LINE_WIDTH = 2;
 
 function sameRow(a, b) {
@@ -25,6 +24,9 @@ function sideGapBox(item, bounds, before, gap) {
 // gaps share hit/indicator areas; grid top/bottom zones indicate at a card side.
 export function folderGapGeometry({ previous, next, container, edge }) {
   const grid = container.id === "folders";
+  // A cached wrapped-row side becomes the ordinary measured gap after resize.
+  if (grid && previous && next && (edge === "left" || edge === "right")
+      && sameRow(previous.getBoundingClientRect(), next.getBoundingClientRect())) edge = null;
   let hitBox;
   let indicatorBox;
   if (edge) {
@@ -62,40 +64,26 @@ export function folderGapGeometry({ previous, next, container, edge }) {
 }
 
 export function dropLineBox(intent) {
-  if (!intent || intent.indicator === "inside") return null;
-  if (intent.empty) {
-    const bounds = intent.element.getBoundingClientRect();
-    return { left: bounds.left, top: bounds.top, width: DROP_LINE_WIDTH, height: 32 };
-  }
-  const { element, indicator, boundary } = intent;
+  if (!intent) return null;
+  const { element, indicator } = intent;
+  const boundary = intent.boundary ?? (intent.empty ? null : bookmarkBoundary(element, indicator === "before"));
   let box;
   let viewport;
-  if (boundary) {
+  if (intent.empty) {
+    const bounds = element.getBoundingClientRect();
+    if (element.id === "folders") {
+      box = { left: bounds.left + DROP_LINE_WIDTH / 2, right: bounds.left + DROP_LINE_WIDTH / 2,
+        top: bounds.top, bottom: bounds.top + 32, vertical: true };
+    } else {
+      box = { left: bounds.left + CONTENT_EDGE_GAP, right: bounds.right - CONTENT_EDGE_GAP,
+        top: bounds.top + CONTENT_EDGE_GAP, bottom: bounds.top + CONTENT_EDGE_GAP, vertical: false };
+      viewport = element.closest(".folder-card")?.querySelector(".folder-content").getBoundingClientRect();
+    }
+  } else {
     box = folderGapGeometry(boundary)?.indicatorBox;
     if (!box) return null;
     viewport = boundary.container.closest(".folder-card")
       ?.querySelector(".folder-content").getBoundingClientRect();
-  } else {
-    // Only bookmarks use on-item insertion zones; folders always use gaps.
-    const bounds = element.getBoundingClientRect();
-    const vertical = element.parentElement.classList.contains("direct-bookmarks");
-    const before = indicator === "before";
-    const [start, end] = vertical ? ["left", "right"] : ["top", "bottom"];
-    const neighbor = (before ? element.previousElementSibling : element.nextElementSibling)
-      ?.getBoundingClientRect();
-    let gap = vertical ? BOOKMARK_EDGE_GAP : 0;
-    if (neighbor && (!vertical || neighbor.top === bounds.top)) {
-      gap = before ? bounds[start] - neighbor[end] : neighbor[start] - bounds[end];
-    }
-    const center = bounds[before ? start : end] + (before ? -gap : gap) / 2;
-    box = vertical
-      ? { left: center, right: center, top: bounds.top, bottom: bounds.bottom, vertical }
-      : { left: bounds.left, right: bounds.right, top: center, bottom: center, vertical };
-    if (!vertical) {
-      // Only the outer card's content scrolls; retain the bookmark row's width.
-      const bounds = element.closest(".folder-card").querySelector(".folder-content").getBoundingClientRect();
-      viewport = { top: bounds.top, bottom: bounds.bottom };
-    }
   }
   const x = box.vertical ? (box.left + box.right) / 2 - DROP_LINE_WIDTH / 2 : box.left;
   const y = box.vertical ? box.top : (box.top + box.bottom) / 2 - DROP_LINE_WIDTH / 2;
@@ -115,6 +103,23 @@ function renderedChildren(container) {
   return [...container.children].flatMap(child =>
     child.classList.contains("direct-bookmarks") ? [...child.children] : [child])
     .filter(child => itemId(child));
+}
+
+function bookmarkBoundary(element, before) {
+  const container = element.parentElement.classList.contains("direct-bookmarks")
+    ? element.closest("#folders") : element.parentElement;
+  const children = renderedChildren(container);
+  const index = children.indexOf(element);
+  const previous = before ? children[index - 1] ?? null : element;
+  const next = before ? element : children[index + 1] ?? null;
+  const grid = container.id === "folders";
+  const edge = !previous ? (grid ? "left" : "top")
+    : !next ? (grid ? "right" : "bottom")
+    : grid && !sameRow(previous.getBoundingClientRect(), next.getBoundingClientRect())
+      ? (before ? "left" : "right") : null;
+  // Row halves and surrounding padding identify the same native boundary;
+  // keep its measured geometry identical instead of inventing a row offset.
+  return { previous, next, container, edge };
 }
 
 function insertionGap(event) {
@@ -147,20 +152,48 @@ function insertionGap(event) {
   }
   for (const boundary of boundaries) {
     const box = folderGapGeometry(boundary)?.hitBox;
-    if (box && event.clientX > box.left && event.clientX < box.right
-        && event.clientY > box.top && event.clientY < box.bottom) return boundary;
+    // Match painted rectangles: the leading edge belongs to the gap, while
+    // the trailing edge belongs to the next item/row. Do not leave a pixel
+    // at the leading edge that can fall through to a canvas append target.
+    if (box && event.clientX >= box.left && event.clientX < box.right
+        && event.clientY >= box.top && event.clientY < box.bottom) return boundary;
   }
   return null;
 }
 
+function reservedGridSpace(root, event) {
+  const bounds = root.getBoundingClientRect();
+  let left = bounds.left;
+  let right = bounds.right;
+  let previousRow = null;
+  let inGutter = false;
+  for (const child of root.children) {
+    if (!child.dataset.folderId && !child.classList.contains("direct-bookmarks")) continue;
+    const box = validBox(child.getBoundingClientRect());
+    if (!box) continue;
+    // Rounded corners can expose the grid background within a card's bounds.
+    // Those pixels belong to the card, not to an unused canvas append area.
+    if (child.dataset.folderId && event.clientX >= box.left && event.clientX < box.right
+        && event.clientY >= box.top && event.clientY < box.bottom) return true;
+    // Grid tracks can overflow the container on windows narrower than 400px.
+    left = Math.min(left, box.left);
+    right = Math.max(right, box.right);
+    if (previousRow && sameRow(previousRow, box)) {
+      previousRow.bottom = Math.max(previousRow.bottom, box.bottom);
+    } else {
+      if (previousRow && event.clientY >= previousRow.bottom && event.clientY < box.top) inGutter = true;
+      previousRow = { top: box.top, bottom: box.bottom };
+    }
+  }
+  return inGutter && event.clientX >= left && event.clientX < right;
+}
+
 export function dropIntent(event, sourceId, nodes) {
   const source = nodes.get(sourceId);
-  if (!source) return null;
-
-  function inside(element, parentId) {
-    return canMoveToFolder(nodes, sourceId, parentId)
-      ? { element, destination: { parentId }, indicator: "inside" } : null;
-  }
+  if (!source || event.target.closest(".folder-heading")) return null;
+  const folder = event.target.closest("[data-folder-id]");
+  // A card/section border is not a gap target, even at a measured gap edge.
+  if (folder && event.target.closest(".folder-content")?.closest("[data-folder-id]") !== folder) return null;
 
   function beside(element, target, before) {
     if (!target || target.id === sourceId || !canMoveToFolder(nodes, sourceId, target.parentId)) {
@@ -183,9 +216,8 @@ export function dropIntent(event, sourceId, nodes) {
     return intent ? { ...intent, boundary } : null;
   }
 
-  const folder = event.target.closest("[data-folder-id]");
   const row = event.target.closest("[data-bookmark-id]");
-  if (nodeType(source) !== "folder" && row) {
+  if (row) {
     const target = nodes.get(row.dataset.bookmarkId);
     if (!target) return null;
     const box = row.getBoundingClientRect();
@@ -194,7 +226,14 @@ export function dropIntent(event, sourceId, nodes) {
       : event.clientY < box.top + box.height / 2;
     return beside(row, target, before);
   }
-  if (folder) return inside(folder, folder.dataset.folderId);
+  if (folder) {
+    const content = event.target.closest(".folder-content");
+    if (!content || content.closest("[data-folder-id]") !== folder
+        || renderedChildren(content).length || !canMoveToFolder(nodes, sourceId, folder.dataset.folderId)) {
+      return null;
+    }
+    return { element: content, destination: { parentId: folder.dataset.folderId }, indicator: "before", empty: true };
+  }
   const root = event.target.closest("#folders")
     ?? event.target.closest("#page, body, html")?.querySelector("#folders");
   if (!root || !canMoveToFolder(nodes, sourceId, OTHER_BOOKMARKS_ID)) return null;
@@ -203,7 +242,7 @@ export function dropIntent(event, sourceId, nodes) {
     return { element: root, destination: { parentId: OTHER_BOOKMARKS_ID }, indicator: "before", empty: true };
   }
   const group = event.target.closest(".direct-bookmarks");
-  if (!group && nodeType(source) !== "bookmark") return null;
+  if (!group && (nodeType(source) !== "bookmark" || reservedGridSpace(root, event))) return null;
   const items = group ? renderedChildren(group) : children;
   const last = items.at(-1);
   if (!last) return null;

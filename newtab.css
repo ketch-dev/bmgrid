@@ -153,6 +153,10 @@ button {
   overflow: visible;
 }
 
+.folder-content:empty {
+  min-height: 24px;
+}
+
 .bookmark {
   position: relative;
   isolation: isolate;
@@ -308,24 +312,6 @@ body:not(.bookmark-menu-open) .bookmark:hover > a.item-name,
 [data-dragging="true"] {
   opacity: 0.45;
 }
-:is(.folder-card, .nested-folder)[data-drop="inside"] {
-  position: relative;
-  isolation: isolate;
-}
-:is(.folder-card, .nested-folder)[data-drop="inside"]::after {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  z-index: 1;
-  border-radius: inherit;
-  pointer-events: none;
-  background: color-mix(in srgb, var(--drop-indicator) 8%, transparent);
-  box-shadow: inset 0 0 0 1px var(--drop-indicator);
-}
-.folder-card[data-drop="inside"]::after {
-  inset: 0;
-}
-
 /* Outside the cards so their rounded overflow clips cannot hide gap markers. */
 #drop-line {
   position: fixed;
