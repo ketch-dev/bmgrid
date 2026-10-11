@@ -1,3 +1,5 @@
+import { OTHER_BOOKMARKS_ID } from "./bookmarks.js";
+
 function toolbarColor(theme) {
   for (const value of [theme?.colors?.icons, theme?.colors?.toolbar_text, theme?.colors?.bookmark_text]) {
     if (typeof value === "string" && value.trim()) return value.trim();
@@ -6,12 +8,13 @@ function toolbarColor(theme) {
   return null;
 }
 
-async function renderToolbarIcon(color) {
+async function renderToolbarIcon(color, filled) {
   if (!CSS.supports("color", color)) throw new Error("Invalid browser toolbar color.");
   const response = await fetch("toolbar-icon.svg");
   if (!response.ok) throw new Error("Could not load the toolbar icon.");
   const svg = new DOMParser().parseFromString(await response.text(), "image/svg+xml").documentElement;
   svg.setAttribute("stroke", color);
+  svg.setAttribute("fill", filled ? color : "none");
   svg.setAttribute("width", "16");
   svg.setAttribute("height", "16");
   const image = new Image();
@@ -30,21 +33,51 @@ async function renderToolbarIcon(color) {
 }
 
 export function startToolbarIconBackground(api, renderIcon = renderToolbarIcon) {
-  const colors = new Map();
+  const states = new Map();
   let queue = Promise.resolve();
 
+  async function isBookmarked(tab) {
+    try {
+      if (!tab?.url) return false;
+      for (const bookmark of await api.bookmarks.search({ url: tab.url })) {
+        if (bookmark.type !== "bookmark") continue;
+        try {
+          let parentId = bookmark.parentId;
+          while (parentId) {
+            if (parentId === OTHER_BOOKMARKS_ID) return true;
+            const [parent] = await api.bookmarks.get(parentId);
+            parentId = parent?.parentId;
+          }
+        } catch {
+          // A removed or unavailable ancestor cannot confirm this match.
+          // Continue checking other saved copies of the same page.
+        }
+      }
+    } catch {
+      // Restricted browser URLs and failed lookups are never confirmed saved.
+    }
+    return false;
+  }
+
   async function refresh(windowId) {
-    if (!colors.has(windowId)) colors.set(windowId, undefined);
+    if (!states.has(windowId)) states.set(windowId, undefined);
     try {
       const color = toolbarColor(await api.theme.getCurrent(windowId));
-      if (!colors.has(windowId) || color === colors.get(windowId)) return;
-      const imageData = color === null ? undefined : await renderIcon(color);
-      if (!colors.has(windowId)) return;
-      // Omitting imageData/path restores this window's manifest theme icons.
-      await api.action.setIcon({ windowId, ...(imageData ? { imageData } : {}) });
-      if (colors.has(windowId)) colors.set(windowId, color);
+      if (!states.has(windowId)) return;
+      const [tab] = await api.tabs.query({ active: true, windowId });
+      const filled = await isBookmarked(tab);
+      const previous = states.get(windowId);
+      if (previous?.color === color && previous?.filled === filled) return;
+      const icon = color !== null ? { imageData: await renderIcon(color, filled) }
+        : filled ? { path: "toolbar-icon-filled.svg" } : {};
+      const [current] = await api.tabs.query({ active: true, windowId });
+      // A tab can switch or navigate while the lookup or render is pending.
+      if (!states.has(windowId) || current?.id !== tab?.id || current?.url !== tab?.url) return;
+      // An empty icon restores the window's native outline theme icons.
+      await api.action.setIcon({ windowId, ...icon });
+      if (states.has(windowId)) states.set(windowId, { color, filled });
     } catch (error) {
-      if (colors.has(windowId)) console.error("bmgrid toolbar icon:", error);
+      if (states.has(windowId)) console.error("bmgrid toolbar icon:", error);
     }
   }
 
@@ -63,7 +96,19 @@ export function startToolbarIconBackground(api, renderIcon = renderToolbarIcon) 
   api.windows.onCreated.addListener(window => {
     if (window.type === "normal") update(window.id);
   });
-  api.windows.onRemoved.addListener(windowId => colors.delete(windowId));
+  api.windows.onRemoved.addListener(windowId => states.delete(windowId));
+  api.tabs.onActivated.addListener(({ windowId }) => update(windowId));
+  api.tabs.onUpdated.addListener((_id, changes, tab) => {
+    if (tab.active && ("url" in changes || changes.status === "complete")) update(tab.windowId);
+  });
+  api.tabs.onCreated.addListener(tab => { if (tab.active) update(tab.windowId); });
+  api.tabs.onRemoved.addListener((_id, info) => { if (!info.isWindowClosing) update(info.windowId); });
+  api.tabs.onAttached.addListener((_id, info) => update(info.newWindowId));
+  api.tabs.onDetached.addListener((_id, info) => update(info.oldWindowId));
+  api.bookmarks.onCreated.addListener((_id, bookmark) => { if (bookmark.type === "bookmark") update(); });
+  api.bookmarks.onChanged.addListener((_id, changes) => { if ("url" in changes) update(); });
+  api.bookmarks.onMoved.addListener(() => update());
+  api.bookmarks.onRemoved.addListener(() => update());
 
   return { ready: update(), idle: () => queue };
 }

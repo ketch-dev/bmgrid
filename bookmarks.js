@@ -197,8 +197,14 @@ export function createBookmarkController(api) {
     return node;
   }
 
-  async function remove(id) {
+  async function remove(id, expectedUrl) {
     const nodes = await editableNodes();
+    if (expectedUrl !== undefined) {
+      const current = nodes.get(id);
+      // Bulk page deletion must not remove a copy moved out or URL-edited
+      // since the native lookup. Ordinary grid deletion still targets its ID.
+      if (!current || nodeType(current) !== "bookmark" || current.url !== expectedUrl) return false;
+    }
     const node = requireItem(nodes, id);
     const siblings = await api.bookmarks.getChildren(node.parentId);
     const index = siblings.findIndex(child => child.id === id);
@@ -213,13 +219,51 @@ export function createBookmarkController(api) {
     try {
       // Don't remove anything until its undo snapshot is safely in memory.
       await saveDeletions();
+      if (expectedUrl !== undefined) {
+        const current = (await editableNodes()).get(id);
+        if (!current || nodeType(current) !== "bookmark" || current.url !== expectedUrl) {
+          deletions.pop();
+          await saveDeletions();
+          return false;
+        }
+      }
       if (nodeType(node) === "folder") await api.bookmarks.removeTree(id);
       else await api.bookmarks.remove(id);
     } catch (error) {
-      deletions.pop();
+      if (deletions.at(-1) === entry) deletions.pop();
       await saveDeletions();
       throw error;
     }
+    return true;
+  }
+
+  async function pageBookmarks(windowId) {
+    if (!Number.isInteger(windowId)) throw new Error("Unable to identify the browser window.");
+    const [tab] = await api.tabs.query({ active: true, windowId });
+    if (!tab?.url) return { tab, matches: [] };
+    const found = await api.bookmarks.search({ url: tab.url });
+    const nodes = await editableNodes();
+    // Firefox decides URL matching; the live subtree decides eligibility.
+    const matches = found.filter(bookmark => nodeType(bookmark) === "bookmark"
+      && nodes.get(bookmark.id)?.url === bookmark.url).map(bookmark => nodes.get(bookmark.id));
+    return { tab, matches };
+  }
+
+  async function removePageBookmarks(message) {
+    const { tab, matches } = await pageBookmarks(message.windowId);
+    if (!tab || tab.id !== message.tabId || tab.url !== message.url) {
+      throw new Error("The active page changed. Try again.");
+    }
+    if (!matches.length) throw new Error("This page has no bookmarks in Other Bookmarks.");
+    let removed = 0;
+    for (const bookmark of matches) {
+      const [current] = await api.tabs.query({ active: true, windowId: message.windowId });
+      if (current?.id !== tab.id || current?.url !== tab.url) {
+        throw new Error("The active page changed. Try again.");
+      }
+      if (await remove(bookmark.id, bookmark.url)) removed++;
+    }
+    return removed;
   }
 
   async function move(id, destination) {
@@ -357,6 +401,11 @@ export function createBookmarkController(api) {
         }
         case "move": return move(message.id, message.destination);
         case "delete": return remove(message.id);
+        case "page-bookmarks": {
+          const { matches } = await pageBookmarks(message.windowId);
+          return matches.length;
+        }
+        case "delete-page-bookmarks": return removePageBookmarks(message);
         case "undo": return undo();
         case "log": return log.join("\n\n") + (log.length ? "\n\n" : "");
         default: throw new Error("Unknown bookmark operation.");

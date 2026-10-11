@@ -6,6 +6,8 @@ import { createBookmarkEditor, createEditorElement } from "./bookmark-editor.js"
 const popup = document.body.classList.contains("toolbar-popup");
 const actions = document.querySelector("#extension-actions");
 const status = document.querySelector("#status");
+let deleting = false;
+let deleteVersion = 0;
 createThemeSettings(document.querySelector("#theme-settings"), document.querySelector("#theme-colors"), error => {
   status.textContent = error ?? "";
   status.hidden = !error;
@@ -38,6 +40,14 @@ const definitions = [
       title: tab?.title ?? "", url: tab?.url ?? "" });
     if (popup) actions.hidden = true;
   } },
+  { id: "delete-bookmark", label: "Delete Bookmark", kind: "trash", popupOnly: true,
+    title: "Delete all bookmarks for this page in Other Bookmarks and its nested folders.", async run() {
+      deleting = true;
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+      if (!tab?.url) throw new Error("Unable to identify the active page.");
+      await request("delete-page-bookmarks", { windowId: tab.windowId, tabId: tab.id, url: tab.url });
+      window.close();
+    } },
   { id: "open-grid", label: "Open Grid", kind: "bookmark", async run() {
     await browser.tabs.create({ url: browser.runtime.getURL("newtab.html") });
     if (popup) window.close();
@@ -56,11 +66,15 @@ const definitions = [
 ];
 
 for (const action of definitions) {
+  if (action.popupOnly && !popup) continue;
   const button = document.createElement("button");
   button.type = "button";
   button.id = action.id;
   button.className = "action-button";
   button.autofocus = popup && action.id === "add-bookmark";
+  button.disabled = action.id === "delete-bookmark";
+  button.hidden = action.id === "delete-bookmark";
+  if (action.title) button.title = action.title;
   button.append(icon(action.kind), action.label);
   button.addEventListener("click", async () => {
     status.hidden = true;
@@ -71,13 +85,39 @@ for (const action of definitions) {
       status.textContent = error.message ?? String(error);
       status.hidden = false;
     } finally {
-      button.disabled = false;
+      if (action.id === "delete-bookmark") {
+        deleting = false;
+        refreshDeleteButton();
+      } else button.disabled = false;
     }
   });
   actions.append(button);
 }
 
+async function refreshDeleteButton() {
+  const button = document.querySelector("#delete-bookmark");
+  const version = ++deleteVersion;
+  button.disabled = true;
+  let count = 0;
+  try {
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    count = tab?.url ? await request("page-bookmarks", { windowId: tab.windowId }) : 0;
+  } catch {
+    // Restricted pages and failed verification hide the deletion action.
+  }
+  if (version !== deleteVersion) return;
+  if (count === 0 && document.activeElement === button) document.querySelector("#add-bookmark").focus();
+  button.hidden = count === 0;
+  button.disabled = deleting || button.hidden;
+}
+
 if (popup) {
+  for (const event of [browser.tabs.onActivated, browser.tabs.onUpdated,
+    browser.tabs.onCreated, browser.tabs.onRemoved, browser.tabs.onAttached, browser.tabs.onDetached,
+    browser.bookmarks.onCreated, browser.bookmarks.onChanged, browser.bookmarks.onMoved, browser.bookmarks.onRemoved]) {
+    event.addListener(refreshDeleteButton);
+  }
+  refreshDeleteButton();
   actions.querySelector("button").focus();
   window.addEventListener("focus", () => {
     if (editorElement.hidden && document.activeElement === document.body) actions.querySelector("button").focus();

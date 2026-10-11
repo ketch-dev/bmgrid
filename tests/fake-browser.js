@@ -73,11 +73,12 @@ export function createFakeBrowser(tree = fixture()) {
     },
     tabs: {
       items: [], current: { id: 0, windowId: 1 }, updates: [],
-      onCreated: event(), onUpdated: event(), onRemoved: event(),
+      onCreated: event(), onUpdated: event(), onRemoved: event(), onActivated: event(),
       onMoved: event(), onAttached: event(), onDetached: event(),
       async getCurrent() { return clone(api.tabs.current); },
-      async query({ windowId } = {}) {
-        return clone(api.tabs.items.filter(tab => windowId === undefined || tab.windowId === windowId));
+      async query({ windowId, active } = {}) {
+        return clone(api.tabs.items.filter(tab => (windowId === undefined || tab.windowId === windowId)
+          && (active === undefined || tab.active === active)));
       },
       async update(id, changes) {
         const tab = api.tabs.items.find(tab => tab.id === id);

@@ -16,6 +16,10 @@ bmgrid replaces Firefox’s new-tab page with a clean, minimal grid of the built
 
 Open the toolbar popup or the extension’s Preferences to choose a theme and customize its colors.
 
+The toolbar icon follows your browser theme’s color. It fills in when the current page is saved in "Other Bookmarks" or any of its nested folders. Pages saved only elsewhere in Firefox leave the icon outlined.
+
+The toolbar popup also offers **Delete Bookmark** for the current page. It immediately deletes all matching copies in "Other Bookmarks" and its nested folders, while keeping copies saved elsewhere. The button appears only when there are matching bookmarks. You can restore the deleted copies individually with `Ctrl+Z` in the grid.
+
 ### Green dots and opening bookmarks
 
 A green dot marks a bookmark that is already open in the same browser window. Click the bookmark to switch to its tab without reloading it. If no matching tab is open, it opens in the current tab. Middle-click always opens a new tab.
