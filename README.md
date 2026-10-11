@@ -18,7 +18,7 @@ Open the toolbar popup or the extension’s Preferences to choose a theme and cu
 
 ### Green dots and opening bookmarks
 
-A green dot means the bookmark’s URL is already open in the same browser window. Click it to switch to the corresponding tab without reloading it. If no matching tab is open, the bookmark opens in the current tab. Middle-click always opens a new tab.
+A green dot marks a bookmark that is already open in the same browser window. Click the bookmark to switch to its tab without reloading it. If no matching tab is open, it opens in the current tab. Middle-click always opens a new tab.
 
 ### Organizing your bookmarks
 

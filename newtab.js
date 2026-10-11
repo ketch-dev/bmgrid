@@ -290,12 +290,12 @@ function updateBookmarkIcons() {
 }
 
 function updateBookmarkOpenState(row, bookmark) {
-  const open = openTabs.has(bookmark.url);
+  const open = openTabs.has(bookmark);
   row.classList.toggle("bookmark-open", open);
   const name = row.querySelector("a.item-name");
   name.title = `${bookmark.title}\n${bookmark.url}`;
   if (open) {
-    const description = "Open in this window. Click to switch to its tab; middle-click to open a new tab.";
+    const description = "Open in this window and confirmed bookmarked by Firefox. Click to switch to its tab; middle-click to open a new tab.";
     name.title += `\n${description}`;
     name.setAttribute("aria-description", description);
   } else {
@@ -315,7 +315,8 @@ folders.addEventListener("click", async event => {
       || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
   event.preventDefault();
   try {
-    if (!await openTabs.activate(link.href)) window.location.assign(link.href);
+    const bookmark = nodes.get(link.closest(".bookmark").dataset.bookmarkId);
+    if (!await openTabs.activate(bookmark)) window.location.assign(link.href);
   } catch (error) {
     showError(error);
   }

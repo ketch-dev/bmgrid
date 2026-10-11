@@ -135,6 +135,19 @@ export function createFakeBrowser(tree = fixture()) {
     async getSubTree(id) { return [clone(requireNode(id))]; },
     async getChildren(id) { return (requireNode(id).children ?? []).map(shallow); },
     async get(id) { return [shallow(requireNode(id))]; },
+    async search({ url }) {
+      api.calls.push({ action: "search", url });
+      const href = new URL(url).href;
+      const matches = [];
+      function visit(node) {
+        if (node.type === "bookmark" && new URL(node.url).href === href) {
+          matches.push({ ...shallow(node), url: href });
+        }
+        for (const child of node.children ?? []) visit(child);
+      }
+      visit(tree);
+      return matches;
+    },
     async update(id, changes) {
       const node = requireNode(id);
       Object.assign(node, changes);
