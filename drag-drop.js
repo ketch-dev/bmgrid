@@ -207,6 +207,18 @@ export function dropIntent(event, sourceId, nodes) {
     };
   }
 
+  function backgroundDestination(parentId, last) {
+    const destination = { parentId };
+    if (itemId(last) === sourceId) {
+      // Keep already-last items in their native slot around hidden separators,
+      // without using the source as its own insertion anchor.
+      const siblings = nodes.get(parentId).children ?? [];
+      const next = siblings[siblings.findIndex(item => item.id === sourceId) + 1];
+      if (next) Object.assign(destination, { anchorId: next.id, position: "before" });
+    }
+    return destination;
+  }
+
   const boundary = insertionGap(event);
   if (boundary) {
     // Anchor to the other sibling when the source borders its own gap.
@@ -229,10 +241,17 @@ export function dropIntent(event, sourceId, nodes) {
   if (folder) {
     const content = event.target.closest(".folder-content");
     if (!content || content.closest("[data-folder-id]") !== folder
-        || renderedChildren(content).length || !canMoveToFolder(nodes, sourceId, folder.dataset.folderId)) {
+        || !canMoveToFolder(nodes, sourceId, folder.dataset.folderId)) {
       return null;
     }
-    return { element: content, destination: { parentId: folder.dataset.folderId }, indicator: "before", empty: true };
+    const last = renderedChildren(content).at(-1);
+    if (!last) {
+      return { element: content, destination: { parentId: folder.dataset.folderId }, indicator: "before", empty: true };
+    }
+    return {
+      element: last, destination: backgroundDestination(folder.dataset.folderId, last), indicator: "after",
+      boundary: { previous: last, next: null, container: content, edge: "bottom" },
+    };
   }
   const root = event.target.closest("#folders")
     ?? event.target.closest("#page, body, html")?.querySelector("#folders");
@@ -246,14 +265,8 @@ export function dropIntent(event, sourceId, nodes) {
   const items = group ? renderedChildren(group) : children;
   const last = items.at(-1);
   if (!last) return null;
-  const destination = { parentId: OTHER_BOOKMARKS_ID };
-  if (itemId(last) === sourceId) {
-    // Keep already-last items in their exact native slot, including around
-    // separators that are not displayed. Never use the source as its own anchor.
-    const siblings = nodes.get(OTHER_BOOKMARKS_ID).children ?? [];
-    const next = siblings[siblings.findIndex(item => item.id === sourceId) + 1];
-    if (next) Object.assign(destination, { anchorId: next.id, position: "before" });
-  } else if (group) {
+  const destination = backgroundDestination(OTHER_BOOKMARKS_ID, last);
+  if (group && itemId(last) !== sourceId) {
     // A group is a position in the root sequence, not a destination folder.
     Object.assign(destination, { anchorId: itemId(last), position: "after" });
   }
