@@ -8,24 +8,30 @@ let loaded = false;
 function applyTheme() {
   if (!loaded) return;
   const root = document.documentElement;
-  const automatic = theme.value === "browser";
-  const scheme = automatic ? browserTheme.value.scheme : theme.value;
+  const mode = theme.value;
+  const automatic = mode === "browser";
+  const { scheme, colors } = automatic ? browserTheme.value : {
+    scheme: mode, colors: Object.fromEntries(THEME_COLORS.map(role => [role.id, role[mode]])),
+  };
+  const overridesEnabled = !automatic && overrides.isEnabled(mode);
   for (const role of THEME_COLORS) {
-    let color = browserTheme.value.colors[role.id];
-    if (!automatic) {
-      const override = overrides.get(theme.value, role.id);
-      color = overrides.isEnabled(theme.value) && override.enabled ? override.color : role[theme.value];
+    let color = colors[role.id];
+    if (overridesEnabled) {
+      const override = overrides.get(mode, role.id);
+      if (override.enabled) color = override.color;
     }
     root.style.setProperty(`--${role.variable ?? role.id}`, colorCss(role, scheme, color));
   }
-  root.dataset.theme = theme.value;
+  root.dataset.theme = mode;
   root.dataset.colorScheme = scheme;
   for (const listener of listeners) listener();
 }
 
 export const theme = createThemePreference(browser, applyTheme);
 export const overrides = createThemeOverrides(browser, applyTheme);
-const browserTheme = createBrowserTheme(browser, matchMedia("(prefers-color-scheme: dark)"), applyTheme);
+const browserTheme = createBrowserTheme(browser, matchMedia("(prefers-color-scheme: dark)"), () => {
+  if (theme.value === "browser") applyTheme();
+});
 
 export function observeTheme(listener) {
   listeners.add(listener);

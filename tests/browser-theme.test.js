@@ -134,6 +134,15 @@ test("translucent browser surfaces that resolve too close to the canvas are shad
   assertLayered(palette);
 });
 
+test("a distinct translucent heading retains its browser color composited over the card", () => {
+  const palette = browserThemePalette({ colors: {
+    ntp_background: "base", ntp_card_background: "translucent-card",
+  } }, true, value => value === "base" ? [20, 30, 40, 1] : value === "translucent-card" ? [180, 60, 120, 0.6] : null);
+  assert.equal(palette.colors.surface, "#743058");
+  assert.equal(palette.colors.header, "#9a376b");
+  assertLayered(palette);
+});
+
 function event() {
   const listeners = [];
   return { addListener: listener => listeners.push(listener), addEventListener: (_type, listener) => listeners.push(listener),

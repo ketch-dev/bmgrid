@@ -1,5 +1,10 @@
 import { THEME_COLORS, normalizeHex } from "./theme-colors.js";
 
+const BRIGHTNESS_WEIGHTS = [0.2126, 0.7152, 0.0722];
+const MIN_COLOR_DISTANCE = 12;
+const MIN_SHADE_STRENGTH = 0.08;
+const SHADE_STEP = 0.04;
+
 let colorContext;
 
 function readColor(value) {
@@ -36,25 +41,32 @@ function mix(front, back, strength) {
     .toString(16).padStart(2, "0")).join("")}`;
 }
 
-function colorDistance(first, second) {
-  const a = channels(first);
-  const b = channels(second);
+function brightness(rgb) {
+  return BRIGHTNESS_WEIGHTS.reduce((sum, weight, index) => sum + weight * rgb[index], 0);
+}
+
+function colorDistance(a, b) {
   // Weight channel differences by their visible contribution; a one-channel
   // or one-step difference alone should not qualify as a separate UI layer.
-  return Math.sqrt([0.2126, 0.7152, 0.0722].reduce((sum, weight, index) =>
+  return Math.sqrt(BRIGHTNESS_WEIGHTS.reduce((sum, weight, index) =>
     sum + weight * (a[index] - b[index]) ** 2, 0));
 }
 
 function separateColor(candidate, base, neighbors, scheme) {
-  const distinct = color => neighbors.every(neighbor => colorDistance(color, neighbor) >= 12);
+  const baseChannels = channels(base);
+  const neighborChannels = neighbors.map(channels);
+  const distinct = color => {
+    const rgb = channels(color);
+    return neighborChannels.every(neighbor => colorDistance(rgb, neighbor) >= MIN_COLOR_DISTANCE);
+  };
   if (candidate && distinct(candidate)) return candidate;
   const preferred = scheme === "dark" ? [255, 255, 255] : [0, 0, 0];
   const opposite = preferred.map(channel => 255 - channel);
   // Mix only toward black/white so derived shades retain the browser's hue.
   // Reverse direction near an endpoint rather than clipping layers together.
   for (const shade of [preferred, opposite]) {
-    for (let step = 2; step <= 25; step++) {
-      const color = mix(channels(base), shade, 1 - step * 0.04);
+    for (let step = MIN_SHADE_STRENGTH / SHADE_STEP; step <= 1 / SHADE_STEP; step++) {
+      const color = mix(baseChannels, shade, 1 - step * SHADE_STEP);
       if (distinct(color)) return color;
     }
   }
@@ -75,7 +87,7 @@ export function browserThemePalette(info, prefersDark, decode = readColor) {
   let scheme = prefersDark ? "dark" : "light";
   if (requestedScheme === "dark" || requestedScheme === "light") scheme = requestedScheme;
   else if (requestedScheme !== "system" && background) {
-    scheme = background[0] * 0.2126 + background[1] * 0.7152 + background[2] * 0.0722 < 128 ? "dark" : "light";
+    scheme = brightness(background) < 128 ? "dark" : "light";
   }
   const palette = Object.fromEntries(THEME_COLORS.map(role => [role.id, role[scheme]]));
   // An empty built-in theme uses the browser's preferred scheme, without
@@ -89,8 +101,9 @@ export function browserThemePalette(info, prefersDark, decode = readColor) {
     palette.canvas, [palette.canvas], scheme);
   palette.text = resolve(find("ntp_text", "popup_text", "toolbar_text", "bookmark_text", "sidebar_text", "tab_text", "tab_background_text"), palette.text);
   palette.link = palette.destination = palette.text;
-  // New-tab text need not contrast with a theme's separate toolbar palette.
-  // Keep heading surfaces in the new-tab palette whenever it is available.
+  // Stay in the new-tab palette: its text need not contrast with the toolbar.
+  // Composite translucent heading colors over the card before separating;
+  // opaque repeated colors instead get a derived shade of the card surface.
   palette.header = separateColor(resolve(find("ntp_card_background", "ntp_background", "toolbar", "frame"), palette.surface),
     palette.surface, [palette.canvas, palette.surface], scheme);
   const hover = find("button_background_hover");
@@ -102,21 +115,20 @@ export function browserThemePalette(info, prefersDark, decode = readColor) {
   palette.focus = palette.indicator = palette["drop-indicator"] = resolve(find("toolbar_field_border_focus", "tab_line", "icons_attention"), palette.text);
   palette.scrollbar = mix(channels(palette.text), channels(palette.surface), 0.45);
   palette["selection-background"] = resolve(find("toolbar_field_highlight", "popup_highlight", "sidebar_highlight"), palette.muted);
-  const [r, g, b] = channels(palette["selection-background"]);
   palette["selection-text"] = resolve(find("toolbar_field_highlight_text", "popup_highlight_text", "sidebar_highlight_text"),
-    r * 0.2126 + g * 0.7152 + b * 0.0722 < 128 ? "#ffffff" : "#202020");
+    brightness(channels(palette["selection-background"])) < 128 ? "#ffffff" : "#202020");
   return { scheme, colors: palette };
 }
 
-export function createBrowserTheme(api, media, onChanged, paletteFor = browserThemePalette) {
+export function createBrowserTheme(api, media, onChanged) {
   let info = {};
   let windowId;
   let tabId;
   let version = 0;
-  let value = paletteFor(info, media.matches);
+  let value = browserThemePalette(info, media.matches);
 
   function apply() {
-    value = paletteFor(info, media.matches);
+    value = browserThemePalette(info, media.matches);
     onChanged();
   }
 
