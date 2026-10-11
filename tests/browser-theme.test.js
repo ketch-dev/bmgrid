@@ -208,7 +208,7 @@ test("removing a browser theme and preferred-scheme changes restore live automat
   f.api.theme.getCurrent = async () => ({});
   f.api.theme.onUpdated.emit({ windowId: 1 });
   await settle();
-  assert.equal(f.theme.value.colors.canvas, "#101010");
+  assert.equal(f.theme.value.colors.canvas, "#1a1a1a");
   f.media.matches = false;
   f.media.emit();
   assert.equal(f.theme.value.scheme, "light");
@@ -221,7 +221,7 @@ test("failed current theme lookups clear stale colors and later updates can reco
   await f.theme.ready;
   f.api.theme.getCurrent = async () => { throw new Error("Unavailable theme"); };
   await f.theme.refresh();
-  assert.equal(f.theme.value.colors.canvas, "#101010");
+  assert.equal(f.theme.value.colors.canvas, "#1a1a1a");
   assert.equal(errors.mock.callCount(), 1);
   f.api.theme.getCurrent = async () => ({ colors: { ntp_background: "#223344" } });
   await f.theme.refresh();

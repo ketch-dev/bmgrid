@@ -25,7 +25,7 @@ test("overrides load without writes, normalize hex, and return independent recor
   const overrides = createThemeOverrides(api, () => {});
   await overrides.ready;
   assert.deepEqual(overrides.get("light", "canvas"), { enabled: true, color: "#aabbcc" });
-  assert.deepEqual(overrides.get("dark", "canvas"), { enabled: false, color: "#101010" });
+  assert.deepEqual(overrides.get("dark", "canvas"), { enabled: false, color: "#1a1a1a" });
   const record = overrides.get("light", "canvas");
   record.color = "#ffffff";
   assert.equal(overrides.get("light", "canvas").color, "#aabbcc");
@@ -130,7 +130,7 @@ test("failed loading retains sync events already received and still permits late
   failRead(new Error("Sync unavailable"));
   await assert.rejects(overrides.ready, /Sync unavailable/);
   assert.deepEqual(overrides.get("dark", "text"), { enabled: true, color: "#abcdef" });
-  assert.deepEqual(overrides.get("dark", "canvas"), { enabled: false, color: "#101010" });
+  assert.deepEqual(overrides.get("dark", "canvas"), { enabled: false, color: "#1a1a1a" });
   await overrides.set("dark", "canvas", true, "#123456");
   assert.equal(overrides.get("dark", "canvas").color, "#123456");
 });
