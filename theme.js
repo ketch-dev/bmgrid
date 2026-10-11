@@ -3,11 +3,11 @@ import { THEME_COLORS, normalizeHex } from "./theme-colors.js";
 const THEME_KEY = "theme";
 
 export function createThemePreference(api, onChanged) {
-  let value = "dark";
+  let value = "browser";
   let updated = false;
 
   function apply(stored) {
-    value = stored === "light" ? "light" : "dark";
+    value = stored === "light" || stored === "dark" ? stored : "browser";
     onChanged(value);
   }
 
@@ -22,7 +22,7 @@ export function createThemePreference(api, onChanged) {
     // A change received while loading is newer than the initial snapshot.
     if (!updated) apply(stored[THEME_KEY]);
   }).catch(error => {
-    if (!updated) apply("dark");
+    if (!updated) apply("browser");
     throw error;
   });
 
@@ -30,7 +30,7 @@ export function createThemePreference(api, onChanged) {
     ready,
     get value() { return value; },
     async set(theme) {
-      if (theme !== "dark" && theme !== "light") throw new Error("Choose Dark or Light.");
+      if (!["browser", "dark", "light"].includes(theme)) throw new Error("Choose Browser Theme, Dark, or Light.");
       await api.storage.local.set({ [THEME_KEY]: theme });
     },
   };

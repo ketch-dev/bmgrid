@@ -10,11 +10,13 @@ bmgrid replaces Firefox’s new-tab page with a clean, minimal grid of the built
 
 - Drag and drop bookmarks and folders to move or reorder them.
 - Add, edit, rename, and delete items through right-click menus.
-- Choose Dark or Light themes and customize their colors.
+- Follow your Firefox theme automatically, or choose Dark or Light and customize their colors.
 - Restore extension-made deletions with `Ctrl+Z` during the browser session.
 - Download a log of the latest 100 bookmark-deletion events.
 
 Open the toolbar popup or the extension’s Preferences to choose a theme and customize its colors.
+
+**Browser Theme** is the default. Its colors follow your Firefox theme and update automatically when it changes. These colors cannot be overridden in the extension. Dark and Light each have their own optional color overrides, remembered when you switch themes.
 
 The toolbar icon follows your browser theme’s color. It fills in when the current page is saved in "Other Bookmarks" or any of its nested folders. Pages saved only elsewhere in Firefox leave the icon outlined.
 

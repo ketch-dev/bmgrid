@@ -112,6 +112,7 @@ test("invalid choices and failed writes preserve persisted and active overrides"
     await assert.rejects(overrides.set("dark", "canvas", true, color), /Use a hex color/);
   }
   await assert.rejects(overrides.set("unknown", "canvas", true, "#123456"), /Unknown theme color/);
+  await assert.rejects(overrides.set("browser", "canvas", true, "#123456"), /Unknown theme color/);
   await assert.rejects(overrides.set("dark", "unknown", true, "#123456"), /Unknown theme color/);
   await assert.rejects(overrides.set("dark", "canvas", "yes", "#123456"), /whether to override/);
   api.storage.sync.set = async () => { throw new Error("Sync storage quota exceeded"); };
@@ -227,6 +228,7 @@ test("failed or invalid master saves preserve the prior enabled state and overri
   await overrides.setEnabled("dark", true);
   await overrides.set("dark", "canvas", true, "#123456");
   await assert.rejects(overrides.setEnabled("unknown", false), /Unknown theme/);
+  await assert.rejects(overrides.setEnabled("browser", true), /Unknown theme/);
   await assert.rejects(overrides.setEnabled("dark", "false"), /whether to override colors/);
   api.storage.sync.set = async () => { throw new Error("Sync storage quota exceeded"); };
   await assert.rejects(overrides.setEnabled("dark", false), /quota exceeded/);

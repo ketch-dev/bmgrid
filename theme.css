@@ -4,7 +4,7 @@
   background: var(--canvas, #101010);
 }
 
-:root[data-theme="light"] {
+:root[data-color-scheme="light"] {
   color-scheme: light;
 }
 

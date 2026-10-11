@@ -5,10 +5,12 @@ export function createThemeSettings(settings, colors, showError) {
   settings.innerHTML = `<div class="theme-setting">
     <span id="theme-label">Theme</span>
     <div id="theme-choice" role="radiogroup" aria-labelledby="theme-label">
+      <label class="theme-option"><input type="radio" name="theme" value="browser"><span>Browser Theme</span></label>
       <label class="theme-option"><input type="radio" name="theme" value="dark"><span>Dark</span></label>
       <label class="theme-option"><input type="radio" name="theme" value="light"><span>Light</span></label>
     </div>
-  </div>`;
+  </div>
+  <p id="browser-theme-hint" class="theme-hint" hidden>Colors follow your Firefox theme and cannot be overridden here.</p>`;
   colors.innerHTML = `<h2><label id="theme-colors-title" class="override-colors-label" for="override-colors">
     <input id="override-colors" class="color-override" type="checkbox" aria-controls="color-overrides-details">
     Override Theme Colors</label></h2>
@@ -19,6 +21,7 @@ export function createThemeSettings(settings, colors, showError) {
         Shadow opacity is preserved.</p>
     </div>`;
   const selector = settings.querySelector("#theme-choice");
+  const browserHint = settings.querySelector("#browser-theme-hint");
   const themeChoices = [...selector.querySelectorAll('input[type="radio"]')];
   const master = colors.querySelector("#override-colors");
   const details = colors.querySelector("#color-overrides-details");
@@ -46,6 +49,7 @@ export function createThemeSettings(settings, colors, showError) {
 
   master.addEventListener("change", () => {
     const mode = theme.value;
+    if (mode === "browser") return;
     const enabled = master.checked;
     masterSave = masterSave.then(() => {
       showError();
@@ -59,6 +63,7 @@ export function createThemeSettings(settings, colors, showError) {
   function key(mode, role) { return `${mode}.${role.id}`; }
 
   function save(mode, role, enabled, hex) {
+    if (mode === "browser") return;
     const draft = { enabled, hex, error: "" };
     drafts.set(key(mode, role), draft);
     try {
@@ -110,6 +115,7 @@ export function createThemeSettings(settings, colors, showError) {
 
     checkbox.addEventListener("change", () => {
       const mode = theme.value;
+      if (mode === "browser") return;
       const draft = drafts.get(key(mode, role));
       const stored = overrides.get(mode, role.id);
       let color = stored.color;
@@ -119,6 +125,7 @@ export function createThemeSettings(settings, colors, showError) {
     });
 
     hex.addEventListener("input", () => {
+      if (theme.value === "browser") return;
       drafts.set(key(theme.value, role), { enabled: true, hex: hex.value, error: "" });
       render();
     });
@@ -156,6 +163,20 @@ export function createThemeSettings(settings, colors, showError) {
     rendering = true;
     const mode = theme.value;
     for (const choice of themeChoices) choice.checked = choice.value === mode;
+    const automatic = mode === "browser";
+    const hidingColorsFocus = automatic && colors.contains(document.activeElement);
+    browserHint.hidden = !automatic;
+    colors.hidden = automatic;
+    master.disabled = automatic;
+    if (automatic) {
+      master.checked = false;
+      master.setAttribute("aria-expanded", "false");
+      details.hidden = true;
+      for (const { checkbox, picker, hex } of rows.values()) checkbox.disabled = picker.disabled = hex.disabled = true;
+      if (hidingColorsFocus) themeChoices.find(choice => choice.checked).focus();
+      rendering = false;
+      return;
+    }
     const enabled = overrides.isEnabled(mode);
     const hidingFocus = !enabled && details.contains(document.activeElement);
     master.checked = enabled;
@@ -172,6 +193,7 @@ export function createThemeSettings(settings, colors, showError) {
       let color = enabled ? stored.color : role[mode];
       try { color = normalizeHex(text); } catch {}
       checkbox.checked = enabled;
+      checkbox.disabled = false;
       row.dataset.overridden = String(enabled);
       label.title = `Default: ${role[mode]}${role.opacity ? `; ${role.opacity[mode]}% opacity${role.id === "scroll-shadow" ? " fading to transparent" : ""}` : ""}`;
       hex.disabled = picker.disabled = !enabled;

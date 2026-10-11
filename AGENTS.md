@@ -2,7 +2,7 @@
 
 ## Scope
 - This is a Firefox new-tab extension built with plain HTML, CSS, and JavaScript.
-- Keep the UI minimal and grayscale, except for green open-bookmark status dots. Add features or dependencies only when requested.
+- Keep the UI minimal. Built-in Dark/Light palettes are grayscale, except for green open-bookmark status dots; Browser Theme uses Firefox's colors. Add features or dependencies only when requested.
 
 ## Documentation
 - `README.md` is intended for extension users. Use plain language and focus on features, visible behavior, and usage. Keep implementation details, API behavior, diagnostic policies, and development instructions in `AGENTS.md` or relevant code comments.
@@ -23,9 +23,11 @@
 - Internal grid row gutters reject both bookmark and folder drops; they must never fall back to appending at the end of Other Bookmarks. Determine gutters from actual grid rows, including full-width bookmark-group wrappers and content-sized folder rows. Column insertion gaps include their leading edges; retain wrapped-row side targets and intentional append drops on unused grid space and the outside canvas.
 
 ## Layout
-- Use a shared Dark/Light segmented selector backed by native radio inputs in Preferences and the toolbar popup; avoid the native select popup, which can trigger an embedded-frame dragging artifact in LibreWolf's Add-ons Manager.
+- Use a shared Browser Theme/Dark/Light segmented selector backed by native radio inputs in Preferences and the toolbar popup; avoid the native select popup, which can trigger an embedded-frame dragging artifact in LibreWolf's Add-ons Manager.
+- Default to Browser Theme when no valid choice is saved; retain saved Dark/Light selections. Browser Theme reads Firefox's per-window palette, applies live updates, and follows grid tabs moved between windows. Prefer new-tab colors, derive missing roles from the available palette, and fall back to the browser-reported preferred light/dark scheme for empty built-in themes. Browser Theme never applies or stores extension color overrides; hide and disable its override controls in Preferences and the toolbar popup, while preserving Dark/Light palettes and drafts. Keep resolved light/dark appearance separate from the selected theme for native controls, shadow opacity, and green status dots.
+- Browser Theme must visibly separate the canvas, cards/unfoldered bookmarks, folder headings, and hover surfaces. Preserve distinct supplied surface colors; derive lighter/darker shades from the browser palette when colors are missing, repeated, or too similar. Preserve the base hue, keep borders visible against cards/headings, and reverse shading direction near black/white endpoints when needed.
 - Gate the color table and custom palette behind an "Override Colors" master checkbox in both Preferences and the toolbar popup. Remember and synchronize its state separately for Dark and Light; disabling it restores the built-in palette while retaining individual overrides and drafts. New configurations default to unchecked; existing customized palettes without a master setting start checked.
-- Offer matching Dark/Light selectors and color-override controls in embedded Preferences and the toolbar popup. Persist the selection in `storage.local` and update all open extension pages. Default to Dark. Keep the built-in Light palette grayscale with soft gray surfaces, never pure-white backgrounds. Both themes expose the same 19 color roles, one per line, with an override checkbox, native color picker/preview, and hex input. Dim unchecked default rows; disabling an override restores the default but retains its custom color for re-enabling. Preserve shadow opacity and gradient shapes. Store each theme/color override and enabled state independently in `storage.sync` for Mozilla account synchronization; accept incoming sync updates live and retain drafts on validation or save failure.
+- Offer matching theme selectors and Dark/Light color-override controls in embedded Preferences and the toolbar popup. Persist the selection in `storage.local` and update all open extension pages. Keep the built-in Light palette grayscale with soft gray surfaces, never pure-white backgrounds. Dark and Light expose the same 19 color roles, one per line, with an override checkbox, native color picker/preview, and hex input. Dim unchecked default rows; disabling an override restores the default but retains its custom color for re-enabling. Preserve shadow opacity and gradient shapes. Store each theme/color override and enabled state independently in `storage.sync` for Mozilla account synchronization; accept incoming sync updates live and retain drafts on validation or save failure.
 - Keep at least 4px between independently highlightable sibling items: toolbar/Preferences actions, grid context-menu actions, and bookmark rows inside folders. Preserve larger existing gaps.
 - Fit up to six columns, each at least 400px wide, accounting for padding and gaps.
 - Size each grid row to its tallest folder's contents, capped at 400px total height including the heading and padding. Stretch shorter folder cards to the same height within their row; different rows may have different heights.
@@ -73,6 +75,7 @@
 - `popup.html`, `options.html`, `options.css`, `options.js`: shared toolbar/Preferences actions and log download.
 - `theme.css`, `theme.js`, `theme-page.js`: shared styles, local theme preference, synchronized color overrides, and live page updates.
 - `theme-colors.js`, `theme-settings.js`: built-in palette/role definitions, color validation, and shared Preferences/popup controls.
+- `browser-theme.js`: Firefox palette mapping, CSS color decoding, automatic scheme fallbacks, and live window-scoped theme tracking.
 - `icons.js`: shared action icons inheriting the surrounding text color.
 - `toolbar-icon.js`: browser-theme toolbar coloring, active-page bookmark state, per-window updates, and normal/high-density icon rendering.
 - `toolbar-icon.svg`, `toolbar-icon-dark.svg`: bright/dark outline bookmark fallbacks exclusively for the toolbar button; the bright SVG is also the source shape for theme-colored icons.

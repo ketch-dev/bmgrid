@@ -4,7 +4,7 @@
   --open-bookmark-dot: #4ac978;
 }
 
-:root[data-theme="light"] {
+:root[data-color-scheme="light"] {
   --open-bookmark-dot: #23884a;
 }
 
