@@ -53,6 +53,7 @@ button {
 }
 
 #folders {
+  --row-capacity: 1;
   display: grid;
   grid-template-columns: repeat(var(--columns, 1), minmax(400px, 1fr));
   align-items: stretch;
@@ -75,13 +76,34 @@ button {
 }
 
 .folder-card {
+  --rows: min(var(--folder-rows, 1), var(--row-capacity, 1));
   position: relative;
   min-width: 400px;
   min-height: 0;
-  max-height: 400px;
+  /* Share the viewport among actual rows, up to its breakpoint capacity. */
+  max-height: max(64px, calc((100vh - 32px - (var(--rows) - 1) * 16px) / var(--rows)));
   overflow: hidden;
   /* Keep off-screen rows' shadows from bleeding above their top edges. */
   box-shadow: 0 12px 16px -12px var(--card-shadow);
+}
+
+/* Each breakpoint fits another 400px row, plus page padding and 16px gaps. */
+@media (min-height: 848px) {
+  #folders {
+    --row-capacity: 2;
+  }
+}
+
+@media (min-height: 1264px) {
+  #folders {
+    --row-capacity: 3;
+  }
+}
+
+@media (min-height: 1680px) {
+  #folders {
+    --row-capacity: 4;
+  }
 }
 
 .folder-card::before,

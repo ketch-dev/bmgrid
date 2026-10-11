@@ -30,7 +30,7 @@
 - Offer matching theme selectors and Dark/Light color-override controls in embedded Preferences and the toolbar popup. Persist the selection in `storage.local` and update all open extension pages. Keep the built-in Light palette grayscale with soft gray surfaces, never pure-white backgrounds. Dark and Light expose the same 19 color roles, one per line, with an override checkbox, native color picker/preview, and hex input. Dim unchecked default rows; disabling an override restores the default but retains its custom color for re-enabling. Preserve shadow opacity and gradient shapes. Store each theme/color override and enabled state independently in `storage.sync` for Mozilla account synchronization; accept incoming sync updates live and retain drafts on validation or save failure.
 - Keep at least 4px between independently highlightable sibling items: toolbar/Preferences actions, grid context-menu actions, and bookmark rows inside folders. Preserve larger existing gaps.
 - Fit up to six columns, each at least 400px wide, accounting for padding and gaps.
-- Size each grid row to its tallest folder's contents, capped at 400px total height including the heading and padding. Stretch shorter folder cards to the same height within their row; different rows may have different heights.
+- Keep folder height calculations in CSS: viewport capacity is one row below 848px, two from 848px, three from 1264px, and four from 1680px. Use the smaller of actual folder-row count and viewport capacity when dividing height, so a single folder row can use the full viewport. JavaScript only counts rows alongside columns, accounting for folder runs separated by full-width direct-bookmark groups; do not measure content heights. Subtract 32px page padding and 16px per allocated row gap, with a 64px minimum height limit on very short viewports. Size each grid row to its tallest folder's contents up to that limit, stretching shorter cards within the row. Do not redistribute unused height from compact rows or subtract direct-bookmark groups from the budget; those groups can push folder rows below the viewport.
 - Folder rows exceeding the available height use vertical page scrolling. Long folder contents scroll inside their cards.
 - Preserve the 400px minimum card width on small windows.
 
@@ -69,7 +69,7 @@
 - `bookmark.svg`: generic bookmark favicon fallback.
 - `bookmarks.js`: native bookmark operations, event cache, undo, and persistent deletion logging.
 - `newtab.html`, `newtab.css`, `newtab.js`: grid rendering and interactions.
-- `layout.js`: column sizing calculation; CSS controls content-sized row heights.
+- `layout.js`: column sizing, rendered folder-row counting, and native top-level grouping; `newtab.css` controls content-sized row heights using actual row count and viewport-height breakpoints.
 - `drag-drop.js`: bookmark and folder drop targeting, measured insertion-gap and indicator geometry, and cycle prevention.
 - `rearrangement.js`: captures item positions, animates grid rearrangements and cross-folder moves, and cleans up interrupted animations. Rearrangement animations intentionally remain enabled regardless of `prefers-reduced-motion`, per user preference.
 - `popup.html`, `options.html`, `options.css`, `options.js`: shared toolbar/Preferences actions and log download.

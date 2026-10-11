@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { gridColumns, topLevelGroups } from "../layout.js";
+import { gridColumns, folderRowCount, topLevelGroups } from "../layout.js";
 
 test("column count respects the 400px minimum including grid gaps", () => {
   for (let count = 2; count <= 6; count++) {
@@ -25,6 +25,24 @@ test("column thresholds account for custom grid gaps", () => {
 test("a 2560px viewport keeps six columns after page padding", () => {
   const width = 2560 - 32;
   assert.equal(gridColumns(width), 6);
+});
+
+test("folder rows count partial final rows and respond to column changes", () => {
+  const types = Array(7).fill("folder");
+  assert.equal(folderRowCount(types, 6), 2);
+  assert.equal(folderRowCount(types, 3), 3);
+  assert.equal(folderRowCount(types, 1), 7);
+  assert.equal(folderRowCount(["folder"], 6), 1);
+  assert.equal(folderRowCount(Array(6).fill("folder"), 6), 1);
+});
+
+test("full-width bookmark groups start new folder rows without using folder capacity", () => {
+  const types = ["bookmark", "folder", "folder", "bookmark", "folder", "bookmark"];
+  assert.equal(folderRowCount(types, 3), 2);
+  assert.equal(folderRowCount(types, 1), 3);
+  assert.equal(folderRowCount(["folder", "folder", "folder", "bookmark", "folder"], 3), 2);
+  assert.equal(folderRowCount([], 3), 0);
+  assert.equal(folderRowCount(["bookmark", "bookmark"], 3), 0);
 });
 
 test("top-level groups retain native mixed order and isolate each bookmark run", () => {

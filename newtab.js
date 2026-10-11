@@ -3,7 +3,7 @@ import { nodeType, OTHER_BOOKMARKS_ID } from "./bookmarks.js";
 import { createIconProvider } from "./bookmark-icons.js";
 import { createOpenTabs } from "./open-tabs.js";
 import { dropIntent, dropLineBox } from "./drag-drop.js";
-import { gridColumns, topLevelGroups } from "./layout.js";
+import { gridColumns, folderRowCount, topLevelGroups } from "./layout.js";
 import { createRearrangement } from "./rearrangement.js";
 import { icon } from "./icons.js";
 import { createBookmarkEditor } from "./bookmark-editor.js";
@@ -57,13 +57,17 @@ async function perform(action, details) {
   }
 }
 
-function updateGridColumns() {
+function updateGridSizing() {
   const gap = parseFloat(getComputedStyle(folders).columnGap);
-  folders.style.setProperty("--columns", gridColumns(folders.clientWidth, gap));
+  const columns = gridColumns(folders.clientWidth, gap);
+  const types = [...folders.children].map(element =>
+    element.classList.contains("folder-card") ? "folder" : "bookmark");
+  folders.style.setProperty("--columns", columns);
+  folders.style.setProperty("--folder-rows", Math.max(1, folderRowCount(types, columns)));
 }
 
 function updateLayout() {
-  updateGridColumns();
+  updateGridSizing();
   for (const card of folders.querySelectorAll(".folder-card")) {
     updateFolderScrollShadow(card.querySelector(".folder-content"));
   }
@@ -370,7 +374,7 @@ function render(tree) {
       folders.append(direct);
     }
   }
-  updateGridColumns();
+  updateGridSizing();
   for (const card of folders.querySelectorAll(".folder-card")) {
     const content = card.querySelector(".folder-content");
     content.scrollTop = scrollPositions.get(card.dataset.folderId) ?? 0;
