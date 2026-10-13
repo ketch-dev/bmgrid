@@ -1,13 +1,27 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { browserThemePalette, createBrowserTheme } from "../browser-theme.js";
-import { THEME_COLORS, normalizeHex } from "../theme-colors.js";
+import { THEME_COLORS, getTheme, normalizeHex } from "../theme-colors.js";
 
 test("empty browser themes follow the browser scheme and cover every role", () => {
   for (const scheme of ["dark", "light"]) {
     const palette = browserThemePalette({}, scheme === "dark");
     assert.equal(palette.scheme, scheme);
     assert.deepEqual(palette.colors, Object.fromEntries(THEME_COLORS.map(role => [role.id, role[scheme]])));
+    assert.notEqual(palette.colors, getTheme(scheme).colors);
+  }
+});
+
+test("browser palette derivation and returned-color edits cannot modify shared built-in defaults", () => {
+  for (const scheme of ["dark", "light"]) {
+    const defaults = structuredClone(getTheme(scheme).colors);
+    const themed = browserThemePalette({ colors: { ntp_background: "#123456", ntp_text: "#abcdef" },
+      properties: { content_color_scheme: scheme } }, scheme === "dark");
+    themed.colors.canvas = "#fedcba";
+    const empty = browserThemePalette({}, scheme === "dark");
+    empty.colors.text = "#112233";
+    assert.deepEqual(getTheme(scheme).colors, defaults);
+    assert.deepEqual(browserThemePalette({}, scheme === "dark").colors, defaults);
   }
 });
 

@@ -1,4 +1,4 @@
-import { THEME_COLORS, normalizeHex } from "./theme-colors.js";
+import { getTheme, normalizeHex } from "./theme-colors.js";
 
 const BRIGHTNESS_WEIGHTS = [0.2126, 0.7152, 0.0722];
 const MIN_COLOR_DISTANCE = 12;
@@ -89,7 +89,8 @@ export function browserThemePalette(info, prefersDark, decode = readColor) {
   else if (requestedScheme !== "system" && background) {
     scheme = brightness(background) < 128 ? "dark" : "light";
   }
-  const palette = Object.fromEntries(THEME_COLORS.map(role => [role.id, role[scheme]]));
+  // Browser-derived colors must never mutate a shared built-in palette.
+  const palette = { ...getTheme(scheme).colors };
   // An empty built-in theme uses the browser's preferred scheme, without
   // inheriting the user's overrides for the independent Dark/Light palettes.
   if (!Object.keys(colors).length) return { scheme, colors: palette };

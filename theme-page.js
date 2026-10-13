@@ -1,5 +1,5 @@
 import { createThemePreference, createThemeOverrides } from "./theme.js";
-import { THEME_COLORS, colorCss } from "./theme-colors.js";
+import { THEME_COLORS, getTheme, colorCss } from "./theme-colors.js";
 import { createBrowserTheme } from "./browser-theme.js";
 
 const listeners = new Set();
@@ -10,9 +10,7 @@ function applyTheme() {
   const root = document.documentElement;
   const mode = theme.value;
   const automatic = mode === "browser";
-  const { scheme, colors } = automatic ? browserTheme.value : {
-    scheme: mode, colors: Object.fromEntries(THEME_COLORS.map(role => [role.id, role[mode]])),
-  };
+  const { scheme, colors } = automatic ? browserTheme.value : getTheme(mode);
   const overridesEnabled = !automatic && overrides.isEnabled(mode);
   for (const role of THEME_COLORS) {
     let color = colors[role.id];

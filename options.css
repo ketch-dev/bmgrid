@@ -31,7 +31,7 @@ button {
 }
 .theme-setting {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-start;
   flex-wrap: wrap;
   gap: 12px;
@@ -42,43 +42,52 @@ button {
 }
 #theme-choice {
   display: flex;
-  gap: 4px;
-}
-.theme-option {
-  position: relative;
-  cursor: pointer;
-}
-.theme-option input {
-  /* Keep native radio focus and arrow-key behavior without a popup window. */
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: 0;
-  clip-path: inset(50%);
-  overflow: hidden;
-}
-.theme-option span {
-  display: block;
-  min-width: 60px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
   padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: 5px;
-  color: var(--muted);
+  color: var(--text);
   background: var(--surface);
-  text-align: center;
+  cursor: pointer;
 }
-.theme-option:hover span {
-  color: var(--text);
+#theme-choice:hover {
   background: var(--surface-hover);
 }
-.theme-option input:checked + span {
+#theme-label {
+  padding-top: 7px;
+}
+.theme-dropdown {
+  flex: 1;
+  min-width: 180px;
+}
+#theme-menu {
+  /* Expand in-page so the toolbar popup and embedded frame fit the list.
+     Native select popups cause dragging artifacts in LibreWolf Preferences. */
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface);
+}
+.theme-option {
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.theme-option[aria-selected="true"] {
   border-color: var(--indicator);
-  color: var(--text);
-  background: var(--surface-hover);
 }
-.theme-option input:focus-visible + span {
-  outline: 2px solid var(--indicator);
-  outline-offset: 2px;
+.theme-option[data-active="true"] {
+  background: var(--surface-hover);
 }
 
 #theme-colors {

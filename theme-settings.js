@@ -1,13 +1,16 @@
 import { theme, overrides, observeTheme } from "./theme-page.js";
-import { THEME_COLORS, normalizeHex, colorCss } from "./theme-colors.js";
+import { THEME_COLORS, getTheme, normalizeHex, colorCss } from "./theme-colors.js";
+import { createThemeDropdown } from "./theme-dropdown.js";
 
 export function createThemeSettings(settings, colors, showError) {
   settings.innerHTML = `<div class="theme-setting">
     <span id="theme-label">Theme</span>
-    <div id="theme-choice" role="radiogroup" aria-labelledby="theme-label">
-      <label class="theme-option"><input type="radio" name="theme" value="browser"><span>Browser Theme</span></label>
-      <label class="theme-option"><input type="radio" name="theme" value="dark"><span>Dark</span></label>
-      <label class="theme-option"><input type="radio" name="theme" value="light"><span>Light</span></label>
+    <div class="theme-dropdown">
+      <button id="theme-choice" type="button" role="combobox" aria-labelledby="theme-label"
+        aria-haspopup="listbox" aria-controls="theme-menu" aria-expanded="false">
+        <span id="theme-value"></span><span aria-hidden="true">▾</span>
+      </button>
+      <div id="theme-menu" role="listbox" aria-labelledby="theme-label" hidden></div>
     </div>
   </div>
   <p id="browser-theme-hint" class="theme-hint" hidden>Colors follow your Firefox theme and cannot be overridden here.</p>`;
@@ -20,9 +23,7 @@ export function createThemeSettings(settings, colors, showError) {
       <p class="theme-hint">Overrides sync with your Mozilla account when Add-ons sync is enabled.
         Shadow opacity is preserved.</p>
     </div>`;
-  const selector = settings.querySelector("#theme-choice");
   const browserHint = settings.querySelector("#browser-theme-hint");
-  const themeChoices = [...selector.querySelectorAll('input[type="radio"]')];
   const master = colors.querySelector("#override-colors");
   const details = colors.querySelector("#color-overrides-details");
   const description = colors.querySelector("#theme-colors-description");
@@ -33,10 +34,7 @@ export function createThemeSettings(settings, colors, showError) {
   let themeSave = Promise.resolve();
   let masterSave = Promise.resolve();
   let colorSave = Promise.resolve();
-
-  selector.addEventListener("change", event => {
-    if (!themeChoices.includes(event.target) || !event.target.checked) return;
-    const selected = event.target.value;
+  const dropdown = createThemeDropdown(settings.querySelector(".theme-dropdown"), selected => {
     // Keep keyboard focus while serializing rapid selections.
     themeSave = themeSave.then(() => {
       showError();
@@ -162,7 +160,8 @@ export function createThemeSettings(settings, colors, showError) {
   function render() {
     rendering = true;
     const mode = theme.value;
-    for (const choice of themeChoices) choice.checked = choice.value === mode;
+    const definition = getTheme(mode);
+    dropdown.setValue(mode);
     const automatic = mode === "browser";
     const hidingColorsFocus = automatic && colors.contains(document.activeElement);
     browserHint.hidden = !automatic;
@@ -173,7 +172,7 @@ export function createThemeSettings(settings, colors, showError) {
       master.setAttribute("aria-expanded", "false");
       details.hidden = true;
       for (const { checkbox, picker, hex } of rows.values()) checkbox.disabled = picker.disabled = hex.disabled = true;
-      if (hidingColorsFocus) themeChoices.find(choice => choice.checked).focus();
+      if (hidingColorsFocus) dropdown.focus();
       rendering = false;
       return;
     }
@@ -183,24 +182,25 @@ export function createThemeSettings(settings, colors, showError) {
     master.setAttribute("aria-expanded", String(enabled));
     details.hidden = !enabled;
     if (hidingFocus) master.focus();
-    description.textContent = `${mode === "dark" ? "Dark" : "Light"} theme. Unchecked colors use defaults.`;
+    description.textContent = `${definition.label} theme. Unchecked colors use defaults.`;
     for (const role of THEME_COLORS) {
       const { row, checkbox, label, preview, picker, hex, error } = rows.get(role.id);
       const stored = overrides.get(mode, role.id);
       const draft = drafts.get(key(mode, role));
       const enabled = draft?.enabled ?? stored.enabled;
-      const text = enabled ? draft?.hex ?? stored.color : role[mode];
-      let color = enabled ? stored.color : role[mode];
+      const defaultColor = definition.colors[role.id];
+      const text = enabled ? draft?.hex ?? stored.color : defaultColor;
+      let color = enabled ? stored.color : defaultColor;
       try { color = normalizeHex(text); } catch {}
       checkbox.checked = enabled;
       checkbox.disabled = false;
       row.dataset.overridden = String(enabled);
-      label.title = `Default: ${role[mode]}${role.opacity ? `; ${role.opacity[mode]}% opacity${role.id === "scroll-shadow" ? " fading to transparent" : ""}` : ""}`;
+      label.title = `Default: ${defaultColor}${role.opacity ? `; ${role.opacity[definition.scheme]}% opacity${role.id === "scroll-shadow" ? " fading to transparent" : ""}` : ""}`;
       hex.disabled = picker.disabled = !enabled;
       // Avoid resetting an unchanged input's caret or native text undo history.
       if (hex.value !== text) hex.value = text;
       if (picker.value !== color) picker.value = color;
-      const css = colorCss(role, mode, color);
+      const css = colorCss(role, definition.scheme, color);
       preview.style.setProperty("--preview-color", role.id === "scroll-shadow" ? `linear-gradient(to right, ${css})` : css);
       error.textContent = draft?.error ?? "";
       error.hidden = !error.textContent;

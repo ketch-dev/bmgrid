@@ -1,19 +1,66 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createThemeOverrides, colorOverrideKey, colorOverridesEnabledKey } from "../theme.js";
-import { THEME_COLORS, normalizeHex, colorCss } from "../theme-colors.js";
+import { THEME_COLORS, THEMES, getTheme, normalizeHex, colorCss } from "../theme-colors.js";
 import { createFakeBrowser } from "./fake-browser.js";
 
-test("both built-in palettes cover the same 19 roles with valid colors and soft-gray light surfaces", () => {
+test("all built-in palettes cover the same 19 roles with valid colors and soft-gray light surfaces", () => {
   assert.equal(THEME_COLORS.length, 19);
   assert.equal(new Set(THEME_COLORS.map(role => role.id)).size, 19);
+  for (const theme of THEMES.filter(theme => theme.scheme)) {
+    assert.deepEqual(Object.keys(theme.colors).sort(), THEME_COLORS.map(role => role.id).sort());
+  }
   for (const role of THEME_COLORS) {
-    assert.equal(normalizeHex(role.dark), role.dark);
-    assert.equal(normalizeHex(role.light), role.light);
-    assert.notEqual(role.light, "#ffffff");
+    for (const theme of THEMES.filter(theme => theme.scheme)) {
+      const color = theme.colors[role.id];
+      assert.equal(normalizeHex(color), color);
+    }
+    assert.notEqual(getTheme("light").colors[role.id], "#ffffff");
   }
   assert.deepEqual(THEME_COLORS.filter(role => ["canvas", "header", "surface", "surface-hover"].includes(role.id))
-    .map(role => role.light), ["#e6e6e6", "#dedede", "#f2f2f2", "#d5d5d5"]);
+    .map(role => getTheme("light").colors[role.id]), ["#e6e6e6", "#dedede", "#f2f2f2", "#d5d5d5"]);
+});
+
+test("profile dark palettes use the bundled Brown, Green, and Blue surfaces and link colors", () => {
+  for (const [theme, expected] of [
+    ["dark-brown", ["#201a16", "#2d2623", "#261f1e", "#45352d", "#c79a7d"]],
+    ["dark-green", ["#151b17", "#222824", "#1b2120", "#2b3930", "#79a489"]],
+    ["dark-blue", ["#161a21", "#21252f", "#1d1f29", "#2d3547", "#8099ce"]],
+  ]) {
+    const definition = getTheme(theme);
+    assert.equal(definition.scheme, "dark");
+    assert.deepEqual(["canvas", "header", "surface", "surface-hover", "link"].map(id => definition.colors[id]), expected);
+    const card = THEME_COLORS.find(role => role.id === "card-shadow");
+    assert.match(colorCss(card, definition.scheme, definition.colors[card.id]), /14%/);
+  }
+});
+
+test("each built-in theme has independent synchronized overrides and master state across reopening", async () => {
+  const api = createFakeBrowser();
+  const pages = [createThemeOverrides(api, () => {}), createThemeOverrides(api, () => {})];
+  await Promise.all(pages.map(page => page.ready));
+  const themes = THEMES.filter(theme => theme.scheme);
+  const colors = new Map(themes.map((theme, index) => [theme.id, `#12345${index}`]));
+  for (const theme of themes) {
+    assert.equal(pages[0].isEnabled(theme.id), false);
+    assert.equal(pages[0].get(theme.id, "canvas").color, theme.colors.canvas);
+    await pages[0].set(theme.id, "canvas", true, colors.get(theme.id));
+    await pages[0].setEnabled(theme.id, true);
+  }
+  await pages[1].setEnabled("dark-brown", false);
+  const reopened = createThemeOverrides(api, () => {});
+  await reopened.ready;
+  for (const theme of themes) {
+    for (const page of [...pages, reopened]) {
+      assert.equal(page.isEnabled(theme.id), theme.id !== "dark-brown");
+      assert.deepEqual(page.get(theme.id, "canvas"), { enabled: true, color: colors.get(theme.id) });
+    }
+  }
+  api.storage.onChanged.emit({ "themeColor.dark-green.canvas": {} }, "sync");
+  for (const page of [...pages, reopened]) {
+    assert.deepEqual(page.get("dark-green", "canvas"), { enabled: false, color: "#151b17" });
+    assert.deepEqual(page.get("dark-brown", "canvas"), { enabled: true, color: colors.get("dark-brown") });
+  }
 });
 
 test("overrides load without writes, normalize hex, and return independent records", async () => {
@@ -157,18 +204,31 @@ test("new configurations start with both master switches off; color changes cann
   assert.equal(overrides.isEnabled("light"), false);
 });
 
-test("legacy active palettes start enabled, remembered disabled colors do not, and explicit off wins", async () => {
+test("missing master settings stay off across reopening while saved settings and colors are retained", async () => {
   for (const master of [undefined, false, true]) {
     const api = createFakeBrowser();
-    api.storage.sync.data["themeColor.dark.canvas"] = { enabled: true, color: "#123456" };
-    api.storage.sync.data["themeColor.light.canvas"] = { enabled: false, color: "#abcdef" };
-    if (master !== undefined) api.storage.sync.data[colorOverridesEnabledKey("dark")] = master;
+    const themes = THEMES.filter(theme => theme.scheme);
+    for (const { id } of themes) {
+      api.storage.sync.data[colorOverrideKey(id, "canvas")] = { enabled: true, color: "#123456" };
+      api.storage.sync.data[colorOverrideKey(id, "text")] = { enabled: false, color: "#abcdef" };
+      if (master !== undefined) api.storage.sync.data[colorOverridesEnabledKey(id)] = master;
+    }
     const overrides = createThemeOverrides(api, () => {});
     await overrides.ready;
-    assert.equal(overrides.isEnabled("dark"), master ?? true);
-    assert.equal(overrides.isEnabled("light"), false);
-    await overrides.set("dark", "canvas", false, "#123456");
-    assert.equal(overrides.isEnabled("dark"), master ?? true);
+    const reopened = createThemeOverrides(api, () => {});
+    await reopened.ready;
+    for (const { id } of themes) {
+      for (const page of [overrides, reopened]) {
+        assert.equal(page.isEnabled(id), master ?? false);
+        assert.deepEqual(page.get(id, "canvas"), { enabled: true, color: "#123456" });
+        assert.deepEqual(page.get(id, "text"), { enabled: false, color: "#abcdef" });
+      }
+      await overrides.set(id, "canvas", false, "#123456");
+      assert.equal(reopened.isEnabled(id), master ?? false);
+      await reopened.setEnabled(id, true);
+      assert.equal(overrides.isEnabled(id), true);
+      assert.deepEqual(overrides.get(id, "canvas"), { enabled: false, color: "#123456" });
+    }
   }
 });
 
@@ -202,7 +262,7 @@ test("master switches sync independently and disabling preserves every individua
   assert.deepEqual(api.storage.local.data, {});
 });
 
-test("incoming sync master changes win over loading snapshots and legacy migration", async () => {
+test("incoming sync master changes win over loading snapshots and missing settings", async () => {
   const api = createFakeBrowser();
   let finishRead;
   api.storage.sync.get = () => new Promise(resolve => { finishRead = resolve; });
