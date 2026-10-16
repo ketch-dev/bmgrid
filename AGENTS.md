@@ -86,10 +86,18 @@
 - `tests/`: Node tests and the fake bookmarks API.
 
 ## Verification
+- Install development tools with `npm ci`; `package-lock.json` locks the `web-ext` toolchain.
 - Run `npm test` for bookmark behavior, logging, undo, and sizing changes.
-- Validate extension changes with `npm exec --yes --package=web-ext -- web-ext lint --source-dir . --ignore-files "tests/**" package.json AGENTS.md`.
+- Validate extension changes with `npm run lint`.
 - Use a disposable, isolated Firefox-compatible profile for browser checks; the extension modifies real bookmarks.
 - Check exports from the embedded Add-ons Manager Preferences page, not just a standalone options tab.
+
+## Release packaging
+- Before publishing an update, increase `version` in both `manifest.json` and `package.json`, and refresh the lockfile with `npm install --package-lock-only`.
+- Run `npm test`, `npm run lint`, then `npm run build`.
+- `npm run build` creates `web-ext-artifacts/bmgrid-{version}.zip`, using the manifest version, and replaces an existing ZIP for that version on repeated builds.
+- Lint and build share exclusions for tests, npm files, agent instructions, README, and GitHub configuration. `web-ext` also excludes dependency directories, Git metadata, and its artifacts directory by default.
+- Upload the ZIP as a new version of the existing Mozilla Add-ons listing; add release notes and update the listing description when visible behavior changes.
 
 ## Git
 - Use read-only Git commands unless Git writes are explicitly requested. Preserve existing staged and unstaged work.
