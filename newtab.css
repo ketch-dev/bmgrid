@@ -197,13 +197,13 @@ button {
   margin-top: 4px;
 }
 
-.bookmark-open::before {
+.bookmark-open::after {
   content: "";
   flex: none;
   width: 12px;
   height: 12px;
-  /* Together with the row's 2px flex gap, leave 8px before the favicon. */
-  margin-right: 6px;
+  /* Together with the row's 2px flex gap, leave 8px after the title. */
+  margin-left: 6px;
   border-radius: 50%;
   background: var(--open-bookmark-dot);
   pointer-events: none;
